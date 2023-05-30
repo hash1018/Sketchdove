@@ -1,5 +1,4 @@
 use gloo_net::http::Request;
-use lib::PPP;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -13,9 +12,8 @@ enum Route {
 }
 
 fn switch(routes: Route) -> Html {
-    let str = format!("Hello Fronend {PPP}");
     match routes {
-        Route::Home => html! { <h1>{ str }</h1> },
+        Route::Home => html! { <h1>{ "Hello Frontend" }</h1> },
         Route::HelloServer => html! { <HelloServer /> },
     }
 }
@@ -39,7 +37,7 @@ fn hello_server() -> Html {
         use_effect(move || {
             if data.is_none() {
                 spawn_local(async move {
-                    let resp = Request::get("/hello-server").send().await.unwrap();
+                    let resp = Request::get("/api/hello").send().await.unwrap();
                     let result = {
                         if !resp.ok() {
                             Err(format!(

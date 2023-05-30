@@ -1,147 +1,103 @@
-use axum::{
-    extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
-        State,
-    },
-    response::{Html, IntoResponse},
-    routing::get,
-    Router,
-};
-use futures::{sink::SinkExt, stream::StreamExt};
-use std::{
-    collections::HashSet,
-    sync::{Arc, Mutex},
-};
-use tokio::sync::broadcast;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use axum::body::{boxed, Body};
+use axum::http::{Response, StatusCode};
+use axum::{response::IntoResponse, routing::get, Router};
+use clap::Parser;
+use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::path::PathBuf;
+use std::str::FromStr;
+use tokio::fs;
+use tower::{ServiceBuilder, ServiceExt};
+use tower_http::services::ServeDir;
+use tower_http::trace::TraceLayer;
 
-// Our shared state
-struct AppState {
-    // We require unique usernames. This tracks which usernames have been taken.
-    user_set: Mutex<HashSet<String>>,
-    // Channel used to send messages to all connected clients.
-    tx: broadcast::Sender<String>,
+// Setup the command line interface with clap.
+#[derive(Parser, Debug)]
+#[clap(name = "server", about = "A server for our wasm project!")]
+struct Opt {
+    /// set the log level
+    #[clap(short = 'l', long = "log", default_value = "debug")]
+    log_level: String,
+
+    /// set the listen addr
+    #[clap(short = 'a', long = "addr", default_value = "::1")]
+    addr: String,
+
+    /// set the listen port
+    #[clap(short = 'p', long = "port", default_value = "8080")]
+    port: u16,
+
+    /// set the directory where static files are to be found
+    #[clap(long = "static-dir", default_value = "../dist")]
+    static_dir: String,
 }
-
-
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "server=trace".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    let opt = Opt::parse();
 
-    // Set up application state for use with with_state().
-    let user_set = Mutex::new(HashSet::new());
-    let (tx, _rx) = broadcast::channel(100);
-
-    let app_state = Arc::new(AppState { user_set, tx });
+    // Setup logging & RUST_LOG from args
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
+    }
+    // enable console logging
+    tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        .route("/websocket", get(websocket_handler))
-        .with_state(app_state);
+        .route("/api/hello", get(hello))
+        .fallback_service(get(|req| async move {
+            match ServeDir::new(&opt.static_dir).oneshot(req).await {
+                Ok(res) => {
+                    let status = res.status();
+                    match status {
+                        StatusCode::NOT_FOUND => {
+                            let index_path = PathBuf::from(&opt.static_dir).join("index.html");
+                            let index_content = match fs::read_to_string(index_path).await {
+                                Err(_) => {
+                                    return Response::builder()
+                                        .status(StatusCode::NOT_FOUND)
+                                        .body(boxed(Body::from("index file not found")))
+                                        .unwrap()
+                                }
+                                Ok(index_content) => index_content,
+                            };
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+                            Response::builder()
+                                .status(StatusCode::OK)
+                                .body(boxed(Body::from(index_content)))
+                                .unwrap()
+                        }
+                        _ => res.map(boxed),
+                    }
+                }
+                Err(err) => Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(boxed(Body::from(format!("error: {err}"))))
+                    .expect("error response"),
+            }
+        }))
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+
+    let sock_addr = SocketAddr::from((
+        IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
+        opt.port,
+    ));
+
+    log::info!("listening on http://{}", sock_addr);
+
+    axum::Server::bind(&sock_addr)
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
         .await
-        .unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+        .expect("Unable to start server");
 }
 
-async fn websocket_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    ws.on_upgrade(|socket| websocket(socket, state))
+async fn hello() -> impl IntoResponse {
+    "hello from server!"
 }
 
-// This function deals with a single websocket connection, i.e., a single
-// connected client / user, for which we will spawn two independent tasks (for
-// receiving / sending chat messages).
-async fn websocket(stream: WebSocket, state: Arc<AppState>) {
-    // By splitting, we can send and receive at the same time.
-    let (mut sender, mut receiver) = stream.split();
-
-    // Username gets set in the receive loop, if it's valid.
-    let mut username = String::new();
-    // Loop until a text message is found.
-    while let Some(Ok(message)) = receiver.next().await {
-        if let Message::Text(name) = message {
-            // If username that is sent by client is not taken, fill username string.
-            check_username(&state, &mut username, &name);
-
-            // If not empty we want to quit the loop else we want to quit function.
-            if !username.is_empty() {
-                break;
-            } else {
-                // Only send our client that username is taken.
-                let _ = sender
-                    .send(Message::Text(String::from("Username already taken.")))
-                    .await;
-
-                return;
-            }
-        }
-    }
-
-    // We subscribe *before* sending the "joined" message, so that we will also
-    // display it to our client.
-    let mut rx = state.tx.subscribe();
-
-    // Now send the "joined" message to all subscribers.
-    let msg = format!("{} joined.", username);
-    tracing::debug!("{}", msg);
-    let _ = state.tx.send(msg);
-
-    // Spawn the first task that will receive broadcast messages and send text
-    // messages over the websocket to our client.
-    let mut send_task = tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
-            // In any websocket error, break loop.
-            if sender.send(Message::Text(msg)).await.is_err() {
-                break;
-            }
-        }
-    });
-
-    // Clone things we want to pass (move) to the receiving task.
-    let tx = state.tx.clone();
-    let name = username.clone();
-
-    // Spawn a task that takes messages from the websocket, prepends the user
-    // name, and sends them to all broadcast subscribers.
-    let mut recv_task = tokio::spawn(async move {
-        while let Some(Ok(Message::Text(text))) = receiver.next().await {
-            // Add username before message.
-            let _ = tx.send(format!("{}: {}", name, text));
-        }
-    });
-
-    // If any one of the tasks run to completion, we abort the other.
-    tokio::select! {
-        _ = (&mut send_task) => recv_task.abort(),
-        _ = (&mut recv_task) => send_task.abort(),
-    };
-
-    // Send "user left" message (similar to "joined" above).
-    let msg = format!("{} left.", username);
-    tracing::debug!("{}", msg);
-    let _ = state.tx.send(msg);
-
-    // Remove username from map so new clients can take it again.
-    state.user_set.lock().unwrap().remove(&username);
-}
-
-fn check_username(state: &AppState, string: &mut String, name: &str) {
-    let mut user_set = state.user_set.lock().unwrap();
-
-    if !user_set.contains(name) {
-        user_set.insert(name.to_owned());
-
-        string.push_str(name);
-    }
+async fn shutdown_signal() {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("expect tokio signal ctrl-c");
+    println!("signal shutdown");
 }
