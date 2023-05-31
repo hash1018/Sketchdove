@@ -1,24 +1,76 @@
-use gloo_net::http::Request;
-use wasm_bindgen_futures::spawn_local;
+use yew::html;
+use yew::html::Scope;
 use yew::prelude::*;
 use yew_router::prelude::*;
+
+use crate::pages::workspace::Workspace;
+
+mod pages;
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
     #[at("/")]
-    Home,
-    #[at("/hello-server")]
-    HelloServer,
+    Login,
+    #[at("/workspace")]
+    Workspace,
 }
 
 fn switch(routes: Route) -> Html {
     match routes {
-        Route::Home => html! { <h1>{ "Hello Frontend" }</h1> },
-        Route::HelloServer => html! { <HelloServer /> },
+        Route::Login => {
+            html! { <Login /> }
+        }
+        Route::Workspace => {
+            html! { <Workspace /> }
+        }
     }
 }
 
-#[function_component(App)]
+pub enum Message {
+    LoginButtonClicked,
+}
+
+pub struct Login {}
+
+impl Component for Login {
+    type Message = Message;
+    type Properties = ();
+
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self {}
+    }
+
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            Message::LoginButtonClicked => {
+                let navigator = ctx.link().navigator().unwrap();
+                navigator.push(&Route::Workspace);
+            }
+        }
+        true
+    }
+
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        html!({ self.view_navi(ctx.link()) })
+    }
+}
+
+impl Login {
+    fn view_navi(&self, link: &Scope<Self>) -> Html {
+        let login_button_clicked = link.callback(|_| Message::LoginButtonClicked);
+
+        html!(
+            <body>
+                <div class="center">
+                    <input id="username" style="display:block; width:100px; box-sizing: border-box" type="text" placeholder="username" />
+                    <button onclick={login_button_clicked}> {"Login"} </button>
+                </div>
+            </body>
+        )
+    }
+}
+
+#[function_component(Main)]
 fn app() -> Html {
     html! {
         <BrowserRouter>
@@ -27,57 +79,8 @@ fn app() -> Html {
     }
 }
 
-#[function_component(HelloServer)]
-fn hello_server() -> Html {
-    let data = use_state(|| None);
-
-    // Request `/api/hello` once
-    {
-        let data = data.clone();
-        use_effect(move || {
-            if data.is_none() {
-                spawn_local(async move {
-                    let resp = Request::get("/api/hello").send().await.unwrap();
-                    let result = {
-                        if !resp.ok() {
-                            Err(format!(
-                                "Error fetching data {} ({})",
-                                resp.status(),
-                                resp.status_text()
-                            ))
-                        } else {
-                            resp.text().await.map_err(|err| err.to_string())
-                        }
-                    };
-                    data.set(Some(result));
-                });
-            }
-
-            || {}
-        });
-    }
-
-    match data.as_ref() {
-        None => {
-            html! {
-                <div>{"No server response"}</div>
-            }
-        }
-        Some(Ok(data)) => {
-            html! {
-                <div>{"Got server response: "}{data}</div>
-            }
-        }
-        Some(Err(err)) => {
-            html! {
-                <div>{"Error requesting data from server: "}{err}</div>
-            }
-        }
-    }
-}
-
 fn main() {
     wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
     console_error_panic_hook::set_once();
-    yew::Renderer::<App>::new().render();
+    yew::Renderer::<Main>::new().render();
 }
