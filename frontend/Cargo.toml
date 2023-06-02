@@ -1,5 +1,5 @@
 [package]
-name = "client"
+name = "frontend"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,7 +11,12 @@ gloo-net = "0.2.5"
 log = "0.4.17"
 wasm-bindgen-futures = "0.4.33"
 wasm-logger = "0.2.0"
+reqwasm = "0.4"
 yew = { version = "0.20.0", features = ["csr"] }
 yew-router = "0.17.0"
+yew-agent = "0.2.0"
+serde_json = "1.0.73"
+serde = {version = "1.0.163", features=["derive"]}
+futures = "0.3.28"
 lib = { path = "../lib" }
 

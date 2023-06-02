@@ -2,8 +2,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-pushd client
+pushd frontend
 CARGO_TARGET_DIR=../target-trunk trunk build --release --public-url /
 popd
 
-cargo run --bin server --release -- --port 8080 --static-dir ./dist
+cargo run --bin backend --release -- --port 8080 --static-dir ./dist

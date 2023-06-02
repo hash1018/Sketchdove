@@ -5,6 +5,7 @@ use yew_router::prelude::*;
 use crate::pages::login::Login;
 use crate::pages::workspace::Workspace;
 
+mod client;
 mod pages;
 
 #[derive(Clone, Routable, PartialEq)]

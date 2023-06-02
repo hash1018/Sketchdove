@@ -1,7 +1,11 @@
 use axum::body::{boxed, Body};
+use axum::extract::ws::{Message, WebSocket};
+use axum::extract::WebSocketUpgrade;
 use axum::http::{Response, StatusCode};
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
+use futures::{SinkExt, StreamExt};
+use lib::message::{ClientMessage, ServerMessage};
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -9,6 +13,7 @@ use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
+use tracing::log;
 
 // Setup the command line interface with clap.
 #[derive(Parser, Debug)]
@@ -43,7 +48,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        .route("/hello", get(hello))
+        .route("/websocket", get(websocket_handler))
         .fallback_service(get(|req| async move {
             match ServeDir::new(&opt.static_dir).oneshot(req).await {
                 Ok(res) => {
@@ -91,8 +96,47 @@ async fn main() {
         .expect("Unable to start server");
 }
 
-async fn hello() -> impl IntoResponse {
-    "hello from server!"
+async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+    log::info!("connect");
+    ws.on_upgrade(websocket)
+}
+
+async fn websocket(stream: WebSocket) {
+    let (mut sender, mut receiver) = stream.split();
+
+    /*
+    let mut send_task = tokio::spawn(async move {
+        while let Ok(msg) = rx.recv().await {
+            // In any websocket error, break loop.
+            if sender.send(Message::Text(msg)).await.is_err() {
+                break;
+            }
+        }
+    });
+    */
+    log::info!("1");
+    let mut recv_task = tokio::spawn(async move {
+        while let Some(Ok(message)) = receiver.next().await {
+            if let Message::Text(message) = message {
+                log::info!("text message");
+                let message: ClientMessage = serde_json::from_str(&message).unwrap();
+                match message {
+                    ClientMessage::Test => {
+                        log::info!("received message from client");
+                        let server_message = serde_json::to_string(&ServerMessage::Test).unwrap();
+                        let _ = sender.send(Message::Text(server_message)).await;
+                    }
+                }
+            } else {
+                log::info!("other message");
+            }
+        }
+    });
+
+    tokio::select! {
+        _ = (&mut recv_task) => {}
+    };
+    log::info!("done");
 }
 
 async fn shutdown_signal() {
