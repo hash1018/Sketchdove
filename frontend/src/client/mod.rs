@@ -10,6 +10,7 @@ use yew_agent::Dispatched;
 use self::event_bus::{EventBus, EventBusMessage};
 pub mod event_bus;
 
+#[derive(Default)]
 pub struct Client {
     tx: RefCell<Option<Sender<ClientMessage>>>,
 }

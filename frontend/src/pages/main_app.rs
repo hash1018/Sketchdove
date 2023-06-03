@@ -2,11 +2,8 @@ use yew::html;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::components::login::Login;
-use crate::components::workspace::Workspace;
-
-mod client;
-mod components;
+use crate::pages::login::Login;
+use crate::pages::workspace::Workspace;
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
@@ -28,16 +25,10 @@ fn switch(routes: Route) -> Html {
 }
 
 #[function_component(Main)]
-fn app() -> Html {
+pub fn app() -> Html {
     html! {
         <BrowserRouter>
             <Switch<Route> render={switch} />
         </BrowserRouter>
     }
-}
-
-fn main() {
-    wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
-    console_error_panic_hook::set_once();
-    yew::Renderer::<Main>::new().render();
 }

@@ -45,7 +45,7 @@ impl Worker for EventBus {
     }
 
     fn name_of_resource() -> &'static str {
-        "event_bus.js"
+        "worker.js"
     }
 
     fn resource_path_is_relative() -> bool {
