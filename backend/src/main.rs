@@ -97,7 +97,6 @@ async fn main() {
 }
 
 async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
-    log::info!("connect");
     ws.on_upgrade(websocket)
 }
 
@@ -114,7 +113,7 @@ async fn websocket(stream: WebSocket) {
         }
     });
     */
-    log::info!("1");
+
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(message)) = receiver.next().await {
             if let Message::Text(message) = message {

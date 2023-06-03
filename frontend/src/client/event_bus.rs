@@ -1,7 +1,7 @@
 use lib::message::ServerMessage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use yew_agent::{HandlerId, Public, PublicWorker, Worker, WorkerLink};
+use yew_agent::{HandlerId, Public, Worker, WorkerLink};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EventBusMessage {
     pub message: ServerMessage,
@@ -19,8 +19,6 @@ impl Worker for EventBus {
     type Reach = Public<Self>;
 
     fn create(link: WorkerLink<Self>) -> Self {
-        EventBus::register();
-
         Self {
             link,
             subscribers: HashSet::new(),

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
 
 use futures::{channel::mpsc::Sender, SinkExt, StreamExt};
 use lib::message::{ClientMessage, ServerMessage};
@@ -11,18 +11,18 @@ use self::event_bus::{EventBus, EventBusMessage};
 pub mod event_bus;
 
 pub struct Client {
-    tx: Arc<Mutex<Option<Sender<ClientMessage>>>>,
+    tx: RefCell<Option<Sender<ClientMessage>>>,
 }
 
 impl Client {
     pub fn new() -> Self {
         Self {
-            tx: Arc::new(Mutex::new(None)),
+            tx: RefCell::new(None),
         }
     }
 
     pub fn is_connected(&self) -> bool {
-        self.tx.lock().unwrap().is_some()
+        self.tx.borrow().is_some()
     }
 
     pub fn connect(&self) -> bool {
@@ -31,6 +31,7 @@ impl Client {
         let (mut write, mut read) = ws.split();
 
         let (in_tx, mut in_rx) = futures::channel::mpsc::channel::<ClientMessage>(1000);
+
         let mut event_bus = EventBus::dispatcher();
 
         spawn_local(async move {
@@ -60,22 +61,22 @@ impl Client {
             }
         });
 
-        *self.tx.lock().unwrap() = Some(in_tx);
+        *self.tx.borrow_mut() = Some(in_tx);
         true
     }
 
     pub fn send_message_to_server(&self, message: ClientMessage) -> bool {
-        let mut sender_lock = self.tx.lock().unwrap();
-        if sender_lock.is_none() {
+        let sender = self.tx.borrow_mut().take();
+        if sender.is_none() {
             log::debug!("sender is none");
             return false;
         }
 
-        let mut sender = sender_lock.take().unwrap();
+        let mut sender = sender.unwrap();
         let _ = sender.try_send(message);
         log::debug!("sender sent message");
 
-        *sender_lock = Some(sender);
+        *self.tx.borrow_mut() = Some(sender);
 
         true
     }

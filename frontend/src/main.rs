@@ -2,11 +2,11 @@ use yew::html;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::pages::login::Login;
-use crate::pages::workspace::Workspace;
+use crate::components::login::Login;
+use crate::components::workspace::Workspace;
 
 mod client;
-mod pages;
+mod components;
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {

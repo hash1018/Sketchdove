@@ -6,11 +6,11 @@ use yew::html;
 use yew::prelude::*;
 use yew_agent::Bridge;
 use yew_agent::Bridged;
-use yew_router::prelude::*;
+//use yew_router::prelude::*;
 
 use crate::client::event_bus::EventBus;
 use crate::client::Client;
-use crate::Route;
+//use crate::Route;
 
 pub enum Message {
     LoginButtonClicked,
@@ -39,7 +39,7 @@ impl Component for Login {
         }
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Message::LoginButtonClicked => {
                 //let navigator = ctx.link().navigator().unwrap();
