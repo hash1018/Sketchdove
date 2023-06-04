@@ -10,12 +10,12 @@ use yew_agent::Dispatched;
 use self::event_bus::{EventBus, EventBusMessage};
 pub mod event_bus;
 
-#[derive(Default)]
-pub struct Client {
+#[derive(Clone, Debug, Default)]
+pub struct WebsocketService {
     tx: RefCell<Option<Sender<ClientMessage>>>,
 }
 
-impl Client {
+impl WebsocketService {
     pub fn new() -> Self {
         Self {
             tx: RefCell::new(None),

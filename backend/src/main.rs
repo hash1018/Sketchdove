@@ -97,6 +97,7 @@ async fn main() {
 }
 
 async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+    log::info!("connected");
     ws.on_upgrade(websocket)
 }
 

@@ -1,63 +1,37 @@
-use std::rc::Rc;
-
-use lib::message::ClientMessage;
-use lib::message::ServerMessage;
 use yew::html;
 use yew::prelude::*;
-use yew_agent::Bridge;
-use yew_agent::Bridged;
-//use yew_router::prelude::*;
 
-use crate::client::event_bus::EventBus;
-use crate::client::Client;
-//use crate::Route;
-
-pub enum Message {
+pub enum LoginMessage {
     LoginButtonClicked,
-    HandleServerMessage(ServerMessage),
 }
 
-pub struct Login {
-    client: Client,
-    _event_bus: Box<dyn Bridge<EventBus>>,
-}
+pub struct Login {}
 
 impl Component for Login {
-    type Message = Message;
+    type Message = LoginMessage;
     type Properties = ();
 
-    fn create(ctx: &Context<Self>) -> Self {
-        let client = Client::new();
-        let callback = {
-            let link = ctx.link().clone();
-            move |e| link.send_message(Message::HandleServerMessage(e))
-        };
-
-        Self {
-            client,
-            _event_bus: EventBus::bridge(Rc::new(callback)),
-        }
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self {}
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Message::LoginButtonClicked => {
+            LoginMessage::LoginButtonClicked => {
                 //let navigator = ctx.link().navigator().unwrap();
                 //navigator.push(&Route::Workspace);
-                if !self.client.is_connected() {
-                    self.client.connect();
-                }
-                self.client.send_message_to_server(ClientMessage::Test);
-            }
-            Message::HandleServerMessage(server_message) => {
-                log::debug!("received message from event_bus {server_message:?}");
+
+                //if !self.client.is_connected() {
+                //    self.client.connect();
+                //}
+                //self.client.send_message_to_server(ClientMessage::Test);
             }
         }
         true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let login_button_clicked = ctx.link().callback(|_| Message::LoginButtonClicked);
+        let login_button_clicked = ctx.link().callback(|_| LoginMessage::LoginButtonClicked);
 
         html!(
             <body>

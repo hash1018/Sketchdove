@@ -3,12 +3,15 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::pages::login::Login;
+use crate::pages::register::Register;
 use crate::pages::workspace::Workspace;
 
 #[derive(Clone, Routable, PartialEq)]
-enum Route {
+pub enum Route {
     #[at("/")]
     Login,
+    #[at("/register")]
+    Register,
     #[at("/workspace")]
     Workspace,
 }
@@ -17,6 +20,9 @@ fn switch(routes: Route) -> Html {
     match routes {
         Route::Login => {
             html! { <Login /> }
+        }
+        Route::Register => {
+            html! { <Register /> }
         }
         Route::Workspace => {
             html! { <Workspace /> }
