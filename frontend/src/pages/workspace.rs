@@ -21,7 +21,7 @@ impl Component for Workspace {
 
     fn create(ctx: &yew::Context<Self>) -> Self {
         let wss = WebsocketService::new();
-        wss.connect();
+        wss.connect().unwrap();
         let callback = {
             let link = ctx.link().clone();
             move |e| link.send_message(WorkSpaceMessage::HandleServerMessage(e))

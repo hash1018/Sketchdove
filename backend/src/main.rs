@@ -1,12 +1,16 @@
 use axum::body::{boxed, Body};
 use axum::extract::ws::{Message, WebSocket};
+use axum::extract::Json;
 use axum::extract::WebSocketUpgrade;
 use axum::http::{Response, StatusCode};
+use axum::routing::post;
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
 use lib::message::{ClientMessage, ServerMessage};
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use lib::user::User;
+use lib::{IP_ADDRESS, PORT};
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use tokio::fs;
@@ -22,14 +26,6 @@ struct Opt {
     /// set the log level
     #[clap(short = 'l', long = "log", default_value = "debug")]
     log_level: String,
-
-    /// set the listen addr
-    #[clap(short = 'a', long = "addr", default_value = "::1")]
-    addr: String,
-
-    /// set the listen port
-    #[clap(short = 'p', long = "port", default_value = "8080")]
-    port: u16,
 
     /// set the directory where static files are to be found
     #[clap(long = "static-dir", default_value = "../dist")]
@@ -49,6 +45,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/websocket", get(websocket_handler))
+        .route("/api/auth/register", post(register_handler))
         .fallback_service(get(|req| async move {
             match ServeDir::new(&opt.static_dir).oneshot(req).await {
                 Ok(res) => {
@@ -83,8 +80,8 @@ async fn main() {
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     let sock_addr = SocketAddr::from((
-        IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
-        opt.port,
+        IpAddr::from_str(IP_ADDRESS).unwrap(),
+        PORT.parse::<u16>().unwrap(),
     ));
 
     log::info!("listening on http://{}", sock_addr);
@@ -147,4 +144,8 @@ async fn shutdown_signal() {
         .await
         .expect("expect tokio signal ctrl-c");
     println!("signal shutdown");
+}
+
+async fn register_handler(Json(payload): Json<User>) -> impl IntoResponse {
+    log::info!("{payload:?}");
 }

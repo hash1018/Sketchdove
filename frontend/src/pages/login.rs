@@ -1,6 +1,10 @@
+use lib::user::User;
+use wasm_bindgen_futures::spawn_local;
 use yew::html;
 use yew::prelude::*;
 use yew_router::scope_ext::RouterScopeExt;
+
+use crate::api::user_api::api_register_user;
 
 use super::main_app::Route;
 
@@ -30,7 +34,12 @@ impl Component for Login {
                 //}
                 //self.client.send_message_to_server(ClientMessage::Test);
             }
-            LoginMessage::RegisterButtonClicked => {}
+            LoginMessage::RegisterButtonClicked => {
+                let user = User::new("name".to_string());
+                spawn_local(async move {
+                    api_register_user(user).await.unwrap();
+                });
+            }
         }
         true
     }

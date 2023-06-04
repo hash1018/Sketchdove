@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 
 use futures::{channel::mpsc::Sender, SinkExt, StreamExt};
+use gloo_utils::errors::JsError;
 use lib::message::{ClientMessage, ServerMessage};
 use reqwasm::websocket::{futures::WebSocket, Message};
 
@@ -8,6 +9,12 @@ use wasm_bindgen_futures::spawn_local;
 use yew_agent::Dispatched;
 
 use super::event_bus::{EventBus, EventBusMessage};
+use lib::{IP_ADDRESS, PORT};
+
+#[derive(Debug)]
+pub enum WebSocketError {
+    OpenError(JsError),
+}
 
 #[derive(Clone, Default)]
 pub struct WebsocketService {
@@ -21,8 +28,15 @@ impl WebsocketService {
         }
     }
 
-    pub fn connect(&self) -> bool {
-        let ws = WebSocket::open("ws:[::1]:8080/websocket").unwrap();
+    pub fn connect(&self) -> Result<(), WebSocketError> {
+        let address = format!("ws:[{IP_ADDRESS}]:{PORT}/websocket");
+
+        let ws = match WebSocket::open(&address) {
+            Ok(ws) => ws,
+            Err(error) => {
+                return Err(WebSocketError::OpenError(error));
+            }
+        };
 
         let (mut write, mut read) = ws.split();
 
@@ -56,7 +70,7 @@ impl WebsocketService {
         });
 
         *self.tx.borrow_mut() = Some(in_tx);
-        true
+        Ok(())
     }
 
     pub fn disconnect(&self) {

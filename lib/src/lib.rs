@@ -1,4 +1,8 @@
 pub mod message;
+pub mod user;
+
+pub const IP_ADDRESS: &str = "::1";
+pub const PORT: &str = "8080";
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

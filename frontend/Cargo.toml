@@ -17,5 +17,6 @@ yew-agent = "0.2.0"
 serde_json = "1.0.73"
 serde = {version = "1.0.163", features=["derive"]}
 futures = "0.3.28"
+gloo-utils = "0.1.6"
 lib = { path = "../lib" }
 
