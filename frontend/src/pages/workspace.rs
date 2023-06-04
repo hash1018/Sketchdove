@@ -4,14 +4,14 @@ use lib::message::ServerMessage;
 use yew::{html, Component};
 use yew_agent::{Bridge, Bridged};
 
-use crate::client::{event_bus::EventBus, WebsocketService};
+use crate::client::{event_bus::EventBus, websocket_service::WebsocketService};
 
 pub enum WorkSpaceMessage {
     HandleServerMessage(ServerMessage),
 }
 
 pub struct Workspace {
-    _wss: WebsocketService,
+    wss: WebsocketService,
     _event_bus: Box<dyn Bridge<EventBus>>,
 }
 
@@ -27,9 +27,13 @@ impl Component for Workspace {
             move |e| link.send_message(WorkSpaceMessage::HandleServerMessage(e))
         };
         Workspace {
-            _wss: wss,
+            wss,
             _event_bus: EventBus::bridge(Rc::new(callback)),
         }
+    }
+
+    fn destroy(&mut self, _ctx: &yew::Context<Self>) {
+        self.wss.disconnect();
     }
 
     fn update(&mut self, _ctx: &yew::Context<Self>, msg: Self::Message) -> bool {

@@ -126,6 +126,9 @@ async fn websocket(stream: WebSocket) {
                         let server_message = serde_json::to_string(&ServerMessage::Test).unwrap();
                         let _ = sender.send(Message::Text(server_message)).await;
                     }
+                    ClientMessage::Disconnect => {
+                        break;
+                    }
                 }
             } else {
                 log::info!("other message");
@@ -136,7 +139,7 @@ async fn websocket(stream: WebSocket) {
     tokio::select! {
         _ = (&mut recv_task) => {}
     };
-    log::info!("done");
+    log::info!("closed");
 }
 
 async fn shutdown_signal() {
