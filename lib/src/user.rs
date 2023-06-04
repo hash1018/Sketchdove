@@ -10,3 +10,9 @@ impl User {
         Self { id }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum UserResponse {
+    Registered(User),
+    AlreadyExist(User),
+}

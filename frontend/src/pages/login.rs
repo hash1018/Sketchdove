@@ -37,7 +37,8 @@ impl Component for Login {
             LoginMessage::RegisterButtonClicked => {
                 let user = User::new("name".to_string());
                 spawn_local(async move {
-                    api_register_user(user).await.unwrap();
+                    let user = api_register_user(user).await.unwrap();
+                    log::info!("return after calling api {user:?}");
                 });
             }
         }
