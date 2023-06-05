@@ -3,12 +3,14 @@ use axum::http::{Request, Response, StatusCode};
 use axum::routing::post;
 use axum::{routing::get, Router};
 use clap::Parser;
+use handler::user::user_login_handler;
 use lib::{IP_ADDRESS, PORT};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
+use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing::log;
@@ -101,6 +103,8 @@ fn using_serve_dir(opt: Opt) -> Router {
     Router::new()
         .route("/websocket", get(websocket_handler))
         .route("/api/user/register", post(user_register_handler))
+        .route("/api/user/login", post(user_login_handler))
         .fallback_service(get(closure))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
+        .layer(CookieManagerLayer::new())
 }

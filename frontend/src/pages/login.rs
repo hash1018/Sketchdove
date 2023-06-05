@@ -1,12 +1,9 @@
+use crate::api::user_api::api_login_user;
+use crate::api::user_api::api_register_user;
 use lib::user::User;
 use wasm_bindgen_futures::spawn_local;
 use yew::html;
 use yew::prelude::*;
-use yew_router::scope_ext::RouterScopeExt;
-
-use crate::api::user_api::api_register_user;
-
-use super::main_app::Route;
 
 pub enum LoginMessage {
     LoginButtonClicked,
@@ -23,22 +20,25 @@ impl Component for Login {
         Self {}
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             LoginMessage::LoginButtonClicked => {
-                let navigator = ctx.link().navigator().unwrap();
-                navigator.push(&Route::Workspace);
+                //let navigator = ctx.link().navigator().unwrap();
+                //navigator.push(&Route::Workspace);
 
-                //if !self.client.is_connected() {
-                //    self.client.connect();
-                //}
-                //self.client.send_message_to_server(ClientMessage::Test);
+                let user = User::new("name".to_string());
+                let user_clone = user.clone();
+                spawn_local(async move {
+                    api_login_user(user).await.unwrap();
+                    log::info!("return after calling api login user {user_clone:?}");
+                });
             }
             LoginMessage::RegisterButtonClicked => {
                 let user = User::new("name".to_string());
+                let user_clone = user.clone();
                 spawn_local(async move {
-                    let user = api_register_user(user).await.unwrap();
-                    log::info!("return after calling api {user:?}");
+                    api_register_user(user).await.unwrap();
+                    log::info!("return after calling api register user {user_clone:?}");
                 });
             }
         }
