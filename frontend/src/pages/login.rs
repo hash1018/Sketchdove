@@ -1,45 +1,69 @@
+use std::rc::Rc;
+
 use crate::api::user_api::api_login_user;
 use crate::api::user_api::api_register_user;
+use crate::LoginedUser;
 use lib::user::User;
 use wasm_bindgen_futures::spawn_local;
 use yew::html;
 use yew::prelude::*;
+use yew_router::scope_ext::RouterScopeExt;
+
+use super::main_app::Route;
 
 pub enum LoginMessage {
     LoginButtonClicked,
     RegisterButtonClicked,
+    ContextChanged(Rc<LoginedUser>),
 }
 
-pub struct Login {}
+pub struct Login {
+    logined_user: Rc<LoginedUser>,
+    _listener: ContextHandle<Rc<LoginedUser>>,
+}
 
 impl Component for Login {
     type Message = LoginMessage;
     type Properties = ();
 
-    fn create(_ctx: &Context<Self>) -> Self {
-        Self {}
+    fn create(ctx: &Context<Self>) -> Self {
+        let (logined_user, _listener) = ctx
+            .link()
+            .context::<Rc<LoginedUser>>(ctx.link().callback(LoginMessage::ContextChanged))
+            .unwrap();
+        Self {
+            logined_user,
+            _listener,
+        }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             LoginMessage::LoginButtonClicked => {
-                //let navigator = ctx.link().navigator().unwrap();
-                //navigator.push(&Route::Workspace);
-
+                let navigator = ctx.link().navigator().unwrap();
                 let user = User::new("name".to_string());
                 let user_clone = user.clone();
+                let logined_user = self.logined_user.clone();
                 spawn_local(async move {
-                    api_login_user(user).await.unwrap();
+                    if let Ok(()) = api_login_user(&user).await {
+                        logined_user.login(user);
+                        navigator.push(&Route::Workspace);
+                    }
                     log::info!("return after calling api login user {user_clone:?}");
                 });
             }
             LoginMessage::RegisterButtonClicked => {
+                let is_logined = self.logined_user.is_logined();
+                log::info!("is_logined? {is_logined}");
                 let user = User::new("name".to_string());
-                let user_clone = user.clone();
                 spawn_local(async move {
-                    api_register_user(user).await.unwrap();
-                    log::info!("return after calling api register user {user_clone:?}");
+                    api_register_user(&user).await.unwrap();
+                    log::info!("return after calling api register user {user:?}");
                 });
+            }
+            LoginMessage::ContextChanged(logined_user) => {
+                self.logined_user = logined_user;
+                return false;
             }
         }
         true

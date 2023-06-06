@@ -3,7 +3,7 @@ use axum::http::{Request, Response, StatusCode};
 use axum::routing::post;
 use axum::{routing::get, Router};
 use clap::Parser;
-use handler::user::user_login_handler;
+use handler::user::{user_login_handler, user_logout_handler};
 use lib::{IP_ADDRESS, PORT};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
@@ -104,6 +104,7 @@ fn using_serve_dir(opt: Opt) -> Router {
         .route("/websocket", get(websocket_handler))
         .route("/api/user/register", post(user_register_handler))
         .route("/api/user/login", post(user_login_handler))
+        .route("/api/user/logout", post(user_logout_handler))
         .fallback_service(get(closure))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .layer(CookieManagerLayer::new())

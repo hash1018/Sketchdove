@@ -20,7 +20,7 @@ pub async fn user_login_handler(cookies: Cookies, Json(_payload): Json<User>) ->
     (StatusCode::OK, Json(UserResponse::LogedIn)).into_response()
 }
 
-pub async fn _user_logout_handler(
+pub async fn user_logout_handler(
     cookies: Cookies,
     Json(_payload): Json<User>,
 ) -> impl IntoResponse {
