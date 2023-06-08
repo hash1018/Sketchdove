@@ -1,3 +1,4 @@
+pub mod figure;
 pub mod message;
 pub mod user;
 
