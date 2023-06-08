@@ -81,3 +81,24 @@ pub async fn api_logout_user(user: &User) -> Result<(), ApiError> {
         Err(_) => Err(ApiError::ParseError),
     }
 }
+
+pub async fn api_check_login_valid() -> Result<(), ApiError> {
+    let request = http::Request::get("/api/user/valid").header("Content-Type", "application/json");
+
+    let result = request.send().await;
+
+    let response = match result {
+        Ok(res) => res,
+        Err(_) => return Err(ApiError::FailedToSendRequest),
+    };
+
+    let res_json = response.json::<UserResponse>().await;
+    match res_json {
+        Ok(data) => match data {
+            UserResponse::LoginValied => Ok(()),
+            UserResponse::LoginExpired => Err(ApiError::UserError(UserResponse::LoginExpired)),
+            _ => unreachable!(),
+        },
+        Err(_) => Err(ApiError::ParseError),
+    }
+}

@@ -1,9 +1,10 @@
 use axum::body::{boxed, Body};
-use axum::http::{Request, Response, StatusCode};
+use axum::http::{Request, StatusCode};
+use axum::response::Response;
 use axum::routing::post;
 use axum::{routing::get, Router};
 use clap::Parser;
-use handler::user::{user_login_handler, user_logout_handler};
+use handler::user::{user_check_login_valid, user_login_handler, user_logout_handler};
 use lib::{IP_ADDRESS, PORT};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
@@ -105,6 +106,7 @@ fn using_serve_dir(opt: Opt) -> Router {
         .route("/api/user/register", post(user_register_handler))
         .route("/api/user/login", post(user_login_handler))
         .route("/api/user/logout", post(user_logout_handler))
+        .route("/api/user/valid", get(user_check_login_valid))
         .fallback_service(get(closure))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .layer(CookieManagerLayer::new())

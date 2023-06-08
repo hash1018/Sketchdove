@@ -27,3 +27,11 @@ pub async fn user_logout_handler(
     cookies.remove(Cookie::new("auth-token", ""));
     (StatusCode::OK, Json(UserResponse::LogedOut)).into_response()
 }
+
+pub async fn user_check_login_valid(cookies: Cookies) -> impl IntoResponse {
+    if let Some(_auth_token) = cookies.get("auth-token") {
+        (StatusCode::OK, Json(UserResponse::LoginValied)).into_response()
+    } else {
+        (StatusCode::OK, Json(UserResponse::LoginExpired)).into_response()
+    }
+}

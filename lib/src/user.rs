@@ -19,4 +19,6 @@ pub enum UserResponse {
     LoginFailed,
     LogedIn,
     LogedOut,
+    LoginValied,
+    LoginExpired,
 }

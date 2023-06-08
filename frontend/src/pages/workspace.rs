@@ -2,58 +2,67 @@ use std::rc::Rc;
 
 use lib::{message::ServerMessage, user::User};
 use wasm_bindgen_futures::spawn_local;
-use yew::{html, Component, ContextHandle};
+use yew::{html, Component, Context};
 use yew_agent::{Bridge, Bridged};
 use yew_router::scope_ext::RouterScopeExt;
 
 use crate::{
-    api::user_api::{api_logout_user, api_register_user},
+    api::user_api::{api_check_login_valid, api_logout_user, api_register_user},
     client::{event_bus::EventBus, websocket_service::WebsocketService},
     pages::main_app::Route,
-    LoginedUser,
 };
 
 pub enum WorkSpaceMessage {
     HandleServerMessage(ServerMessage),
     LogoutButtonClicked,
     RegisterButtonClicked,
-    ContextChanged(Rc<LoginedUser>),
+    RequestInit,
+}
+
+fn check_login_valid(ctx: &Context<Workspace>) {
+    let navigator = ctx.link().navigator().unwrap();
+    let link = ctx.link().clone();
+    spawn_local(async move {
+        if let Ok(()) = api_check_login_valid().await {
+            link.send_message(WorkSpaceMessage::RequestInit);
+        } else {
+            navigator.replace(&Route::Login);
+        }
+    });
+}
+
+fn init(ctx: &Context<Workspace>) -> (Option<WebsocketService>, Option<Box<dyn Bridge<EventBus>>>) {
+    let wss = WebsocketService::new();
+    wss.connect().unwrap();
+    let callback = {
+        let link = ctx.link().clone();
+        move |e| link.send_message(WorkSpaceMessage::HandleServerMessage(e))
+    };
+
+    (Some(wss), Some(EventBus::bridge(Rc::new(callback))))
 }
 
 pub struct Workspace {
-    wss: WebsocketService,
-    _event_bus: Box<dyn Bridge<EventBus>>,
-    logined_user: Rc<LoginedUser>,
-    _listener: ContextHandle<Rc<LoginedUser>>,
+    wss: Option<WebsocketService>,
+    _event_bus: Option<Box<dyn Bridge<EventBus>>>,
 }
 
 impl Component for Workspace {
     type Message = WorkSpaceMessage;
     type Properties = ();
 
-    fn create(ctx: &yew::Context<Self>) -> Self {
-        let wss = WebsocketService::new();
-        wss.connect().unwrap();
-        let callback = {
-            let link = ctx.link().clone();
-            move |e| link.send_message(WorkSpaceMessage::HandleServerMessage(e))
-        };
-
-        let (logined_user, _listener) = ctx
-            .link()
-            .context::<Rc<LoginedUser>>(ctx.link().callback(WorkSpaceMessage::ContextChanged))
-            .unwrap();
-
+    fn create(ctx: &Context<Self>) -> Self {
+        check_login_valid(ctx);
         Workspace {
-            wss,
-            _event_bus: EventBus::bridge(Rc::new(callback)),
-            logined_user,
-            _listener,
+            wss: None,
+            _event_bus: None,
         }
     }
 
     fn destroy(&mut self, _ctx: &yew::Context<Self>) {
-        self.wss.disconnect();
+        if let Some(wss) = self.wss.as_ref() {
+            wss.disconnect();
+        }
     }
 
     fn update(&mut self, ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
@@ -63,33 +72,25 @@ impl Component for Workspace {
             }
             WorkSpaceMessage::LogoutButtonClicked => {
                 let navigator = ctx.link().navigator().unwrap();
-                let logined_user = self.logined_user.clone();
-                let user = logined_user.user();
+                let user = User::new("name".to_string());
                 spawn_local(async move {
-                    if let Some(user) = user {
-                        if let Ok(()) = api_logout_user(&user).await {
-                            logined_user.logout();
-                            log::info!("logout done");
-                            navigator.push(&Route::Login);
-                        }
+                    if let Ok(()) = api_logout_user(&user).await {
+                        navigator.replace(&Route::Login);
                     }
                 });
             }
             WorkSpaceMessage::RegisterButtonClicked => {
-                let is_logined = self.logined_user.is_logined();
-                log::info!("is_logined? {is_logined}");
                 let user = User::new("name".to_string());
                 spawn_local(async move {
                     api_register_user(&user).await.unwrap();
-                    log::info!("return after calling api register user {user:?}");
                 });
             }
-            WorkSpaceMessage::ContextChanged(logined_user) => {
-                self.logined_user = logined_user;
-                return false;
+            WorkSpaceMessage::RequestInit => {
+                init(ctx);
+                return true;
             }
         }
-        true
+        false
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
