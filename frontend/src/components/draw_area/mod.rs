@@ -1,34 +1,43 @@
 use lib::figure::Rgba;
-use wasm_bindgen::JsCast;
-use web_sys::{HtmlCanvasElement, WebGlProgram, WebGlRenderingContext as GL};
-use yew::{html, Component, Context, NodeRef};
+use web_sys::{MouseEvent, WebGlProgram, WebGlRenderingContext as GL};
+use yew::{html, Component, Context};
+
+use crate::algorithm::{
+    coordinates_converter::convert_figure_to_webgl,
+    draw_mode::{normal_mode::NormalMode, pan_mode::PanMode, DrawMode, DrawModeType},
+};
+
+use self::data::DrawAreaData;
+
+pub mod data;
+
+pub enum DrawAreaMessage {
+    MouseDown(MouseEvent),
+    MouseMove(MouseEvent),
+    MouseUp(MouseEvent),
+}
 
 pub struct DrawArea {
-    node_ref: NodeRef,
+    data: DrawAreaData,
+    current_mode: Option<Box<dyn DrawMode>>,
 }
 
 impl Component for DrawArea {
-    type Message = ();
+    type Message = DrawAreaMessage;
     type Properties = ();
 
     fn create(_ctx: &yew::Context<Self>) -> Self {
+        let data = DrawAreaData::new();
+        let current_mode = NormalMode::new();
         DrawArea {
-            node_ref: NodeRef::default(),
+            data,
+            current_mode: Some(Box::new(current_mode)),
         }
     }
 
-    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
-        if !first_render {
-            return;
-        }
-
-        let canvas = self.node_ref.cast::<HtmlCanvasElement>().unwrap();
-        let gl: GL = canvas
-            .get_context("webgl")
-            .unwrap()
-            .unwrap()
-            .dyn_into()
-            .unwrap();
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        let canvas = self.data.convert_canvas();
+        let gl: GL = self.data.convert_gl_context();
 
         canvas.set_width(canvas.client_width() as u32);
         canvas.set_height(canvas.client_height() as u32);
@@ -38,14 +47,48 @@ impl Component for DrawArea {
         self.render_gl(gl);
     }
 
-    fn update(&mut self, _ctx: &yew::Context<Self>, _msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            DrawAreaMessage::MouseDown(event) => {
+                if event.button() == 1 {
+                    self.current_mode = Some(Box::new(PanMode::new()));
+                }
+
+                if let Some(mut current_mode) = self.current_mode.take() {
+                    current_mode.mouse_press_event(event, &mut self.data);
+                    self.current_mode = Some(current_mode);
+                }
+            }
+            DrawAreaMessage::MouseMove(event) => {
+                if let Some(mut current_mode) = self.current_mode.take() {
+                    current_mode.mouse_mouse_event(event, &mut self.data);
+                    self.current_mode = Some(current_mode);
+                }
+            }
+            DrawAreaMessage::MouseUp(event) => {
+                if let Some(mut current_mode) = self.current_mode.take() {
+                    current_mode.mouse_release_event(event, &mut self.data);
+
+                    if current_mode.get_type() == DrawModeType::PanMode {
+                        self.current_mode = Some(Box::new(NormalMode::new()));
+                    } else {
+                        self.current_mode = Some(current_mode);
+                    }
+                }
+            }
+        }
         true
     }
 
-    fn view(&self, _ctx: &yew::Context<Self>) -> yew::Html {
+    fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
+        let mousedown = ctx.link().callback(DrawAreaMessage::MouseDown);
+        let mousemove = ctx.link().callback(DrawAreaMessage::MouseMove);
+        let mouseup = ctx.link().callback(DrawAreaMessage::MouseUp);
+        let node_ref_clone = self.data.node_ref();
+
         html! (
             <div style="width:100%; height:100%; overflow: hidden;">
-                <canvas style="width:100%; height:100%;" ref={self.node_ref.clone()} />
+                <canvas style="width:100%; height:100%;" onmousedown={mousedown} onmousemove={mousemove} onmouseup={mouseup} ref={node_ref_clone} />
             </div>
         )
     }
@@ -92,8 +135,33 @@ impl DrawArea {
         gl.vertex_attrib_pointer_with_i32(position, 2, GL::FLOAT, false, 0, 0);
         gl.enable_vertex_attrib_array(position);
 
-        let rgba = Rgba::new(1.0, 1.0, 0.0, 1.0);
-        draw_line(&gl, &shader_program, -1.0, -1.0, 1.0, 1.0, &rgba);
+        let rgba = Rgba::new(1.0, 0.0, 0.0, 1.0);
+
+        let canvas = self.data.convert_canvas();
+        let (start_x, start_y) = convert_figure_to_webgl(
+            self.data.coordinates(),
+            canvas.client_width() as f64,
+            canvas.client_height() as f64,
+            -100.0,
+            -100.0,
+        );
+        let (end_x, end_y) = convert_figure_to_webgl(
+            self.data.coordinates(),
+            canvas.client_width() as f64,
+            canvas.client_height() as f64,
+            0.0,
+            0.0,
+        );
+
+        draw_line(
+            &gl,
+            &shader_program,
+            start_x as f32,
+            start_y as f32,
+            end_x as f32,
+            end_y as f32,
+            &rgba,
+        );
 
         /*
         draw_triangle(

@@ -1,37 +1,26 @@
+pub mod algorithm;
 pub mod api;
 pub mod client;
 pub mod components;
 pub mod pages;
 
-use std::cell::RefCell;
-
-use lib::user::User;
-
-#[derive(PartialEq, Default)]
-pub struct LoginedUser {
-    inner: RefCell<Option<User>>,
+#[derive(Default)]
+pub struct Coordinates {
+    pub scroll_v_pos: f64,
+    pub scroll_h_pos: f64,
+    pub zoom_rate: f64,
+    pub center_x: f64,
+    pub center_y: f64,
 }
 
-impl LoginedUser {
-    pub fn new() -> Self {
-        LoginedUser {
-            inner: RefCell::new(None),
+impl Coordinates {
+    pub fn new() -> Coordinates {
+        Self {
+            scroll_v_pos: 0.0,
+            scroll_h_pos: 0.0,
+            zoom_rate: 1.0,
+            center_x: 100.0,
+            center_y: 100.0,
         }
-    }
-
-    pub fn is_logined(&self) -> bool {
-        self.inner.borrow().is_some()
-    }
-
-    pub fn login(&self, user: User) {
-        *self.inner.borrow_mut() = Some(user);
-    }
-
-    pub fn logout(&self) {
-        let _ = self.inner.borrow_mut().take();
-    }
-
-    pub fn user(&self) -> Option<User> {
-        self.inner.borrow().clone()
     }
 }
