@@ -19,7 +19,7 @@ pub enum DrawAreaMessage {
 
 pub struct DrawArea {
     data: DrawAreaData,
-    current_mode: Option<Box<dyn DrawMode>>,
+    current_mode: Box<dyn DrawMode>,
 }
 
 impl Component for DrawArea {
@@ -31,7 +31,7 @@ impl Component for DrawArea {
         let current_mode = NormalMode::new();
         DrawArea {
             data,
-            current_mode: Some(Box::new(current_mode)),
+            current_mode: Box::new(current_mode),
         }
     }
 
@@ -51,29 +51,17 @@ impl Component for DrawArea {
         match msg {
             DrawAreaMessage::MouseDown(event) => {
                 if event.button() == 1 {
-                    self.current_mode = Some(Box::new(PanMode::new()));
+                    self.current_mode = Box::new(PanMode::new());
                 }
-
-                if let Some(mut current_mode) = self.current_mode.take() {
-                    current_mode.mouse_press_event(event, &mut self.data);
-                    self.current_mode = Some(current_mode);
-                }
+                self.current_mode.mouse_press_event(event, &mut self.data);
             }
             DrawAreaMessage::MouseMove(event) => {
-                if let Some(mut current_mode) = self.current_mode.take() {
-                    current_mode.mouse_mouse_event(event, &mut self.data);
-                    self.current_mode = Some(current_mode);
-                }
+                self.current_mode.mouse_mouse_event(event, &mut self.data);
             }
             DrawAreaMessage::MouseUp(event) => {
-                if let Some(mut current_mode) = self.current_mode.take() {
-                    current_mode.mouse_release_event(event, &mut self.data);
-
-                    if current_mode.get_type() == DrawModeType::PanMode {
-                        self.current_mode = Some(Box::new(NormalMode::new()));
-                    } else {
-                        self.current_mode = Some(current_mode);
-                    }
+                self.current_mode.mouse_release_event(event, &mut self.data);
+                if self.current_mode.get_type() == DrawModeType::PanMode {
+                    self.current_mode = Box::new(NormalMode::new());
                 }
             }
         }
