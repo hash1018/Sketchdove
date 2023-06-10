@@ -1,6 +1,6 @@
 pub mod line;
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct Rgba {
     pub r: f32,
     pub g: f32,
@@ -13,3 +13,5 @@ impl Rgba {
         Rgba { r, g, b, a }
     }
 }
+
+pub trait Figure {}
