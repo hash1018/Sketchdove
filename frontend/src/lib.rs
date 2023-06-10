@@ -1,5 +1,6 @@
 pub mod api;
 pub mod client;
+pub mod components;
 pub mod pages;
 
 use std::cell::RefCell;
