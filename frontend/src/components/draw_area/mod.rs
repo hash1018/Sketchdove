@@ -1,11 +1,14 @@
 use lib::figure::{line::Line, Rgba};
 use web_sys::{MouseEvent, WebGlProgram, WebGlRenderingContext as GL};
-use yew::{html, Component, Context};
+use yew::{html, Callback, Component, Context, Properties};
 
-use crate::algorithm::{
-    coordinates_converter::convert_figure_to_webgl,
-    draw_mode::{normal_mode::NormalMode, pan_mode::PanMode, DrawMode, DrawModeType},
-    visitor::{drawer::Drawer, Accepter},
+use crate::{
+    algorithm::{
+        coordinates_converter::convert_figure_to_webgl,
+        draw_mode::{normal_mode::NormalMode, pan_mode::PanMode, DrawMode, DrawModeType},
+        visitor::{drawer::Drawer, Accepter},
+    },
+    pages::workspace::ChildRequestType,
 };
 
 use self::data::{DrawAreaData, WebGLData};
@@ -18,15 +21,22 @@ pub enum DrawAreaMessage {
     MouseUp(MouseEvent),
 }
 
+#[derive(Clone, PartialEq, Properties)]
+pub struct DrawAreaProps {
+    pub handler: Callback<ChildRequestType>,
+    pub current_mode: DrawModeType,
+}
+
 pub struct DrawArea {
     data: DrawAreaData,
     current_mode: Box<dyn DrawMode>,
+    pan_mode: Option<PanMode>,
     webgl_data: Option<WebGLData>,
 }
 
 impl Component for DrawArea {
     type Message = DrawAreaMessage;
-    type Properties = ();
+    type Properties = DrawAreaProps;
 
     fn create(_ctx: &yew::Context<Self>) -> Self {
         let data = DrawAreaData::new();
@@ -34,8 +44,18 @@ impl Component for DrawArea {
         DrawArea {
             data,
             current_mode: Box::new(current_mode),
+            pan_mode: None,
             webgl_data: None,
         }
+    }
+
+    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
+        let new_mode = ctx.props().current_mode;
+        let old_mode = old_props.current_mode;
+        if new_mode != old_mode {
+            self.current_mode = new_mode.into();
+        }
+        false
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
@@ -52,23 +72,34 @@ impl Component for DrawArea {
         self.render_gl(gl);
     }
 
-    fn update(&mut self, _ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
         match msg {
             DrawAreaMessage::MouseDown(event) => {
                 if event.button() == 1 {
-                    self.current_mode = Box::new(PanMode::new());
+                    let mut pan_mode = PanMode::new();
+                    pan_mode.mouse_press_event(event, &mut self.data);
+                    self.pan_mode = Some(pan_mode);
+                } else {
+                    self.current_mode.mouse_press_event(event, &mut self.data);
                 }
-                self.current_mode.mouse_press_event(event, &mut self.data);
             }
             DrawAreaMessage::MouseMove(event) => {
-                self.current_mode.mouse_mouse_event(event, &mut self.data);
+                if let Some(mut pan_mode) = self.pan_mode.take() {
+                    pan_mode.mouse_mouse_event(event, &mut self.data);
+                    self.pan_mode = Some(pan_mode);
+                } else {
+                    self.current_mode.mouse_mouse_event(event, &mut self.data);
+                }
             }
             DrawAreaMessage::MouseUp(event) => {
-                self.current_mode.mouse_release_event(event, &mut self.data);
-                if self.current_mode.get_type() == DrawModeType::PanMode {
-                    self.current_mode = Box::new(NormalMode::new());
+                if self.pan_mode.take().is_none() {
+                    if self.current_mode.mouse_release_event(event, &mut self.data) {
+                        ctx.props()
+                            .handler
+                            .emit(ChildRequestType::ChangeMode(DrawModeType::NormalMode));
+                    }
+                    return false;
                 }
-                return false;
             }
         }
         true

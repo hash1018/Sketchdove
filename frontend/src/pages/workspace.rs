@@ -7,7 +7,8 @@ use yew_agent::{Bridge, Bridged};
 use yew_router::scope_ext::RouterScopeExt;
 
 use crate::{
-    api::user_api::{api_check_login_valid, api_logout_user, api_register_user},
+    algorithm::draw_mode::DrawModeType,
+    api::user_api::{api_check_login_valid, api_logout_user},
     client::{event_bus::EventBus, websocket_service::WebsocketService},
     components::{draw_area::DrawArea, title_bar::TitleBar},
     pages::main_app::Route,
@@ -15,8 +16,13 @@ use crate::{
 
 pub enum WorkSpaceMessage {
     HandleServerMessage(ServerMessage),
-    HandleChildRequest(String),
+    HandleChildRequest(ChildRequestType),
     RequestInit,
+}
+
+pub enum ChildRequestType {
+    Logout,
+    ChangeMode(DrawModeType),
 }
 
 fn check_login_valid(ctx: &Context<Workspace>) {
@@ -45,6 +51,7 @@ fn init(ctx: &Context<Workspace>) -> (Option<WebsocketService>, Option<Box<dyn B
 pub struct Workspace {
     wss: Option<WebsocketService>,
     _event_bus: Option<Box<dyn Bridge<EventBus>>>,
+    current_mode: DrawModeType,
 }
 
 impl Component for Workspace {
@@ -56,6 +63,7 @@ impl Component for Workspace {
         Workspace {
             wss: None,
             _event_bus: None,
+            current_mode: DrawModeType::NormalMode,
         }
     }
 
@@ -70,8 +78,8 @@ impl Component for Workspace {
             WorkSpaceMessage::HandleServerMessage(server_message) => {
                 log::debug!("received message from event_bus {server_message:?}");
             }
-            WorkSpaceMessage::HandleChildRequest(message) => match message.as_str() {
-                "logout" => {
+            WorkSpaceMessage::HandleChildRequest(request_type) => match request_type {
+                ChildRequestType::Logout => {
                     let navigator = ctx.link().navigator().unwrap();
                     let user = User::new("name".to_string());
                     spawn_local(async move {
@@ -80,17 +88,16 @@ impl Component for Workspace {
                         }
                     });
                 }
-                "register" => {
-                    let user = User::new("name".to_string());
-                    spawn_local(async move {
-                        api_register_user(&user).await.unwrap();
-                    });
+                ChildRequestType::ChangeMode(mode) => {
+                    if mode != self.current_mode {
+                        self.current_mode = mode;
+                        return true;
+                    }
                 }
-                _ => {}
             },
             WorkSpaceMessage::RequestInit => {
-                init(ctx);
-                return true;
+                (self.wss, self._event_bus) = init(ctx);
+                return false;
             }
         }
         false
@@ -98,12 +105,14 @@ impl Component for Workspace {
 
     fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
         let handler = ctx.link().callback(WorkSpaceMessage::HandleChildRequest);
+        let current_mode = self.current_mode;
+        let handler_clone = handler.clone();
         html! {
             <body>
-                <div class="top"> <TitleBar {handler}/> </div>
+                <div class="top"> <TitleBar {handler} {current_mode} /> </div>
                 <div class="content">
                     <div class="left"></div>
-                    <div class="center"> <DrawArea /> </div>
+                    <div class="center"> <DrawArea handler = {handler_clone} {current_mode} /> </div>
                     <div class="right"></div>
                 </div>
             </body>

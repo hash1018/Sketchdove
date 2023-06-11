@@ -1,7 +1,5 @@
 use crate::components::draw_area::data::DrawAreaData;
 
-use super::DrawMode;
-
 #[derive(Default)]
 pub struct PanMode {
     prev_x: f64,
@@ -17,13 +15,13 @@ impl PanMode {
     }
 }
 
-impl DrawMode for PanMode {
-    fn mouse_press_event(&mut self, event: web_sys::MouseEvent, _data: &mut DrawAreaData) {
+impl PanMode {
+    pub fn mouse_press_event(&mut self, event: web_sys::MouseEvent, _data: &mut DrawAreaData) {
         self.prev_x = event.offset_x() as f64;
         self.prev_y = event.offset_y() as f64;
     }
 
-    fn mouse_mouse_event(&mut self, event: web_sys::MouseEvent, data: &mut DrawAreaData) {
+    pub fn mouse_mouse_event(&mut self, event: web_sys::MouseEvent, data: &mut DrawAreaData) {
         let x = event.offset_x() as f64;
         let y = event.offset_y() as f64;
 
@@ -35,11 +33,5 @@ impl DrawMode for PanMode {
 
         self.prev_x = x;
         self.prev_y = y;
-    }
-
-    fn mouse_release_event(&mut self, _event: web_sys::MouseEvent, _data: &mut DrawAreaData) {}
-
-    fn get_type(&self) -> super::DrawModeType {
-        super::DrawModeType::PanMode
     }
 }

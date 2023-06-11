@@ -3,15 +3,15 @@ use crate::components::draw_area::data::DrawAreaData;
 use super::DrawMode;
 
 #[derive(Default)]
-pub struct NormalMode {}
+pub struct LineMode {}
 
-impl NormalMode {
+impl LineMode {
     pub fn new() -> Self {
-        NormalMode {}
+        LineMode {}
     }
 }
 
-impl DrawMode for NormalMode {
+impl DrawMode for LineMode {
     fn mouse_press_event(&mut self, _event: web_sys::MouseEvent, _data: &mut DrawAreaData) {}
 
     fn mouse_mouse_event(&mut self, _event: web_sys::MouseEvent, _data: &mut DrawAreaData) {}
@@ -21,10 +21,10 @@ impl DrawMode for NormalMode {
         _event: web_sys::MouseEvent,
         _data: &mut DrawAreaData,
     ) -> bool {
-        false
+        true
     }
 
     fn get_type(&self) -> super::DrawModeType {
-        super::DrawModeType::NormalMode
+        super::DrawModeType::LineMode
     }
 }
