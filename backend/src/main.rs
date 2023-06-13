@@ -1,27 +1,17 @@
 use axum::body::{boxed, Body};
 use axum::http::{Request, StatusCode};
 use axum::response::Response;
-use axum::routing::post;
 use axum::{routing::get, Router};
 use clap::Parser;
-use handler::user::{user_check_login_valid, user_login_handler, user_logout_handler};
 use lib::{IP_ADDRESS, PORT};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use tokio::fs;
-use tower::{ServiceBuilder, ServiceExt};
-use tower_cookies::CookieManagerLayer;
+use tower::ServiceExt;
 use tower_http::services::ServeDir;
-use tower_http::trace::TraceLayer;
 use tracing::log;
 
-use crate::handler::user::user_register_handler;
-use crate::handler::websocket::websocket_handler;
-
-mod handler;
-
-// Setup the command line interface with clap.
 #[derive(Parser, Debug, Clone)]
 #[clap(name = "server", about = "A server for our wasm project!")]
 struct Opt {
@@ -38,11 +28,6 @@ struct Opt {
 async fn main() {
     let opt = Opt::parse();
 
-    // Setup logging & RUST_LOG from args
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
-    }
-    // enable console logging
     tracing_subscriber::fmt::init();
 
     let app = using_serve_dir(opt.clone());
@@ -65,7 +50,6 @@ async fn shutdown_signal() {
     tokio::signal::ctrl_c()
         .await
         .expect("expect tokio signal ctrl-c");
-    println!("signal shutdown");
 }
 
 fn using_serve_dir(opt: Opt) -> Router {
@@ -101,13 +85,5 @@ fn using_serve_dir(opt: Opt) -> Router {
         }
     };
 
-    Router::new()
-        .route("/websocket", get(websocket_handler))
-        .route("/api/user/register", post(user_register_handler))
-        .route("/api/user/login", post(user_login_handler))
-        .route("/api/user/logout", post(user_logout_handler))
-        .route("/api/user/valid", get(user_check_login_valid))
-        .fallback_service(get(closure))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .layer(CookieManagerLayer::new())
+    Router::new().fallback_service(get(closure))
 }

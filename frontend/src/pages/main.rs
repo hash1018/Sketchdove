@@ -1,8 +1,8 @@
 use yew::{html, Component};
 
-pub struct Register {}
+pub struct Main {}
 
-impl Component for Register {
+impl Component for Main {
     type Message = ();
     type Properties = ();
 
@@ -15,8 +15,6 @@ impl Component for Register {
     }
 
     fn view(&self, _ctx: &yew::Context<Self>) -> yew::Html {
-        html! {
-            <body> { "Hello register" } </body>
-        }
+        html! { "main" }
     }
 }

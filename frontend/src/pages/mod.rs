@@ -1,4 +1,3 @@
-pub mod login;
-pub mod main_app;
-pub mod register;
+pub mod app;
+pub mod main;
 pub mod workspace;
