@@ -3,6 +3,7 @@ use axum::http::{Request, StatusCode};
 use axum::response::Response;
 use axum::{routing::get, Router};
 use clap::Parser;
+use handler::websocket::websocket_handler;
 use lib::{IP_ADDRESS, PORT};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
@@ -11,6 +12,8 @@ use tokio::fs;
 use tower::ServiceExt;
 use tower_http::services::ServeDir;
 use tracing::log;
+
+mod handler;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(name = "server", about = "A server for our wasm project!")]
@@ -28,6 +31,11 @@ struct Opt {
 async fn main() {
     let opt = Opt::parse();
 
+    // Setup logging & RUST_LOG from args
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
+    }
+    // enable console logging
     tracing_subscriber::fmt::init();
 
     let app = using_serve_dir(opt.clone());
@@ -85,5 +93,7 @@ fn using_serve_dir(opt: Opt) -> Router {
         }
     };
 
-    Router::new().fallback_service(get(closure))
+    Router::new()
+        .route("/websocket", get(websocket_handler))
+        .fallback_service(get(closure))
 }

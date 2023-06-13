@@ -1,5 +1,7 @@
 use yew::{html, Component, Properties};
 
+use crate::pages::app::user_name;
+
 #[derive(Clone, PartialEq, Properties)]
 pub struct WorkspaceProps {
     pub id: String,
@@ -20,7 +22,12 @@ impl Component for Workspace {
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
+        let user_name = user_name();
         let id = ctx.props().id.clone();
-        html!({ format!("workspace {id}") })
+        if let Some(user_name) = user_name {
+            html!({ format!("workspace id:{id}, user_name:{user_name}") })
+        } else {
+            html!({ format!("workspace id:{id} user name is none") })
+        }
     }
 }
