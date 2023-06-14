@@ -53,7 +53,7 @@ impl Component for Workspace {
             wss: None,
             _event_bus: None,
             show_chat: false,
-            current_mode: DrawModeType::NormalMode,
+            current_mode: DrawModeType::SelectMode,
         }
     }
 

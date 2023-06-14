@@ -9,7 +9,7 @@ use crate::{
     algorithm::{
         coordinates_converter::{convert_figure_to_device, convert_figure_to_webgl},
         draw_mode::{
-            normal_mode::NormalMode, pan_mode::PanMode, DrawMode, DrawModeType, ShouldAction,
+            pan_mode::PanMode, select_mode::SelectMode, DrawMode, DrawModeType, ShouldAction,
         },
         visitor::{
             drawer::{Drawer, DrawerGL},
@@ -48,7 +48,7 @@ impl Component for DrawArea {
 
     fn create(_ctx: &yew::Context<Self>) -> Self {
         let data = DrawAreaData::new();
-        let current_mode = NormalMode::new();
+        let current_mode = SelectMode::new();
         DrawArea {
             data,
             current_mode: Box::new(current_mode),
@@ -108,10 +108,10 @@ impl Component for DrawArea {
 
         if let Some(should_action) = should_action {
             match should_action {
-                ShouldAction::BackToNormal => {
+                ShouldAction::BackToSelect => {
                     ctx.props()
                         .handler
-                        .emit(ChildRequestType::ChangeMode(DrawModeType::NormalMode));
+                        .emit(ChildRequestType::ChangeMode(DrawModeType::SelectMode));
                 }
                 ShouldAction::Rerender => {
                     return true;

@@ -1,6 +1,5 @@
-use yew::{html, Callback, Component, Properties};
-
 use crate::{algorithm::draw_mode::DrawModeType, pages::workspace::ChildRequestType};
+use yew::{html, Callback, Component, Properties};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct ToolBoxProps {
@@ -22,17 +21,45 @@ impl Component for ToolBox {
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
+        let select_button_clicked = ctx
+            .props()
+            .handler
+            .reform(|_| ChildRequestType::ChangeMode(DrawModeType::SelectMode));
+
         let line_button_clicked = ctx
             .props()
             .handler
             .reform(|_| ChildRequestType::ChangeMode(DrawModeType::LineMode));
 
-        let text = format!("{0:?}", ctx.props().current_mode);
+        let current_mode = ctx.props().current_mode;
+
         html! {
             <div style="height: 100%; overflow: hidden;">
-                <button onclick={line_button_clicked}> {"Line"} </button>
-                <font color="#FFFFFF"> {text} </font>
+                <button id="select_button" class={ select_button_class(current_mode) }  onclick={select_button_clicked}></button>
+                <button id="line_button" class={ line_button_class(current_mode) } onclick={line_button_clicked}></button>
             </div>
         }
+    }
+}
+
+fn select_button_class(current_mode: DrawModeType) -> String {
+    format!(
+        "{0} tool_box_select_button",
+        render_tool_button(current_mode, DrawModeType::SelectMode)
+    )
+}
+
+fn line_button_class(current_mode: DrawModeType) -> String {
+    format!(
+        "{0} tool_box_line_button",
+        render_tool_button(current_mode, DrawModeType::LineMode)
+    )
+}
+
+fn render_tool_button(current_mode: DrawModeType, target_mode: DrawModeType) -> String {
+    if current_mode == target_mode {
+        "tool_box_button_selected".to_string()
+    } else {
+        "tool_box_button".to_string()
     }
 }

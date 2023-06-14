@@ -1,0 +1,26 @@
+.tool_box_button {
+    width: 48px;
+    height: 48px;
+    background-color: white;
+    border:0px;
+    border-radius:10px;
+}
+.tool_box_button:hover {
+    background-color: #FFEDC5;
+}
+
+.tool_box_button_selected {
+    width: 48px;
+    height: 48px;
+    background-color: #FFD983;
+    border:0px;
+    border-radius:10px;
+}
+
+.tool_box_select_button {
+    background-image: url("/img/writing/cursor.png");
+}
+
+.tool_box_line_button {
+    background-image: url("/img/writing/line.png");
+}

@@ -3,15 +3,15 @@ use crate::components::draw_area::data::DrawAreaData;
 use super::{DrawMode, ShouldAction};
 
 #[derive(Default)]
-pub struct NormalMode {}
+pub struct SelectMode {}
 
-impl NormalMode {
+impl SelectMode {
     pub fn new() -> Self {
-        NormalMode {}
+        SelectMode {}
     }
 }
 
-impl DrawMode for NormalMode {
+impl DrawMode for SelectMode {
     fn mouse_press_event(
         &mut self,
         _event: web_sys::MouseEvent,
@@ -37,6 +37,6 @@ impl DrawMode for NormalMode {
     }
 
     fn get_type(&self) -> super::DrawModeType {
-        super::DrawModeType::NormalMode
+        super::DrawModeType::SelectMode
     }
 }

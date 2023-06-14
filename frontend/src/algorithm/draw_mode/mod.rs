@@ -2,21 +2,22 @@ use web_sys::MouseEvent;
 
 use crate::components::draw_area::data::DrawAreaData;
 
-use self::{line_mode::LineMode, normal_mode::NormalMode};
+use self::{line_mode::LineMode, select_mode::SelectMode};
+use strum_macros::EnumIter;
 
 pub mod line_mode;
-pub mod normal_mode;
 pub mod pan_mode;
+pub mod select_mode;
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(PartialEq, Copy, Clone, Debug, EnumIter)]
 pub enum DrawModeType {
-    NormalMode,
+    SelectMode,
     LineMode,
 }
 
 pub enum ShouldAction {
     Rerender,
-    BackToNormal,
+    BackToSelect,
 }
 
 pub trait DrawMode {
@@ -41,7 +42,7 @@ pub trait DrawMode {
 impl From<DrawModeType> for Box<dyn DrawMode> {
     fn from(val: DrawModeType) -> Self {
         let mode: Box<dyn DrawMode> = match val {
-            DrawModeType::NormalMode => Box::new(NormalMode::new()),
+            DrawModeType::SelectMode => Box::new(SelectMode::new()),
             DrawModeType::LineMode => Box::new(LineMode::new()),
         };
         mode

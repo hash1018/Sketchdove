@@ -33,7 +33,7 @@ impl DrawMode for LineMode {
         _event: web_sys::MouseEvent,
         _data: &mut DrawAreaData,
     ) -> Option<ShouldAction> {
-        Some(ShouldAction::BackToNormal)
+        Some(ShouldAction::BackToSelect)
     }
 
     fn get_type(&self) -> super::DrawModeType {
