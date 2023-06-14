@@ -6,8 +6,9 @@ use yew_agent::{Bridge, Bridged};
 use yew_router::scope_ext::RouterScopeExt;
 
 use crate::{
+    algorithm::draw_mode::DrawModeType,
     client::{event_bus::EventBus, websocket_service::WebsocketService},
-    components::{chat::Chat, title_bar::TitleBar},
+    components::{chat::Chat, draw_area::DrawArea, title_bar::TitleBar, tool_box::ToolBox},
     pages::app::user_name,
 };
 
@@ -22,6 +23,7 @@ pub enum WorkSpaceMessage {
 pub enum ChildRequestType {
     Leave,
     ShowChat(bool),
+    ChangeMode(DrawModeType),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -33,6 +35,7 @@ pub struct Workspace {
     wss: Option<WebsocketService>,
     _event_bus: Option<Box<dyn Bridge<EventBus>>>,
     show_chat: bool,
+    current_mode: DrawModeType,
 }
 
 impl Component for Workspace {
@@ -50,6 +53,7 @@ impl Component for Workspace {
             wss: None,
             _event_bus: None,
             show_chat: false,
+            current_mode: DrawModeType::NormalMode,
         }
     }
 
@@ -75,21 +79,32 @@ impl Component for Workspace {
                 }
                 ChildRequestType::ShowChat(show) => {
                     self.show_chat = show;
+                    return true;
+                }
+                ChildRequestType::ChangeMode(mode) => {
+                    if mode != self.current_mode {
+                        self.current_mode = mode;
+                        return true;
+                    }
                 }
             },
         }
-        true
+        false
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
         let handler = ctx.link().callback(WorkSpaceMessage::HandleChildRequest);
         let show_chat = self.show_chat;
+        let current_mode = self.current_mode;
+        let handler_clone = handler.clone();
+        let handler_clone2 = handler.clone();
 
         html! {
             <body>
                 <div class="top"> <TitleBar {handler} {show_chat} /> </div>
                 <div class="content">
-                    <div class="left"></div>
+                    <DrawArea handler = {handler_clone} {current_mode} />
+                    <div class="left"> <ToolBox handler = {handler_clone2} {current_mode} /> </div>
                     if show_chat {
                         <div class="chat_position"> <Chat /> </div>
                     }
