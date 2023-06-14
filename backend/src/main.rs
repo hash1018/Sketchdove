@@ -9,8 +9,9 @@ use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use tokio::fs;
-use tower::ServiceExt;
+use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
+use tower_http::trace::TraceLayer;
 use tracing::log;
 
 mod handler;
@@ -96,4 +97,5 @@ fn using_serve_dir(opt: Opt) -> Router {
     Router::new()
         .route("/websocket", get(websocket_handler))
         .fallback_service(get(closure))
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
 }

@@ -1,0 +1,21 @@
+.content>.chat_position {
+    position: absolute; 
+    right: 30px;
+    background-color:rgba(0.0, 0.0, 0.0, 0.85); 
+    width: 300px; 
+    height: 600px;
+    z-index: 1; 
+    top: 50%;
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
+    border-radius: 10px;
+}
+
+.chat {
+    height: calc(100% - 40px);
+    top:40px; position:relative;
+    overflow: hidden;
+    background-color: white;
+    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
