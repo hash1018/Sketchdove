@@ -1,12 +1,20 @@
 use lib::figure::{line::Line, Rgba};
-use web_sys::{MouseEvent, WebGlProgram, WebGlRenderingContext as GL};
+use web_sys::{
+    CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, WebGlProgram,
+    WebGlRenderingContext as GL,
+};
 use yew::{html, Callback, Component, Context, Properties};
 
 use crate::{
     algorithm::{
-        coordinates_converter::convert_figure_to_webgl,
-        draw_mode::{normal_mode::NormalMode, pan_mode::PanMode, DrawMode, DrawModeType},
-        visitor::{drawer::Drawer, Accepter},
+        coordinates_converter::{convert_figure_to_device, convert_figure_to_webgl},
+        draw_mode::{
+            normal_mode::NormalMode, pan_mode::PanMode, DrawMode, DrawModeType, ShouldAction,
+        },
+        visitor::{
+            drawer::{Drawer, DrawerGL},
+            Accepter,
+        },
     },
     pages::workspace::ChildRequestType,
 };
@@ -60,49 +68,57 @@ impl Component for DrawArea {
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         let canvas = self.data.convert_canvas();
-        let gl: GL = self.data.convert_gl_context();
+        let context = self.data.convert_2d_context();
+        self.render_2d_context(canvas, context);
 
-        canvas.set_width(canvas.client_width() as u32);
-        canvas.set_height(canvas.client_height() as u32);
-
-        gl.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
-        gl.clear_color(209.0 / 255.0, 209.0 / 255.0, 209.0 / 255.0, 1.0);
-        gl.clear(GL::COLOR_BUFFER_BIT);
-
-        self.render_gl(gl);
+        //let canvas = self.data.convert_canvas();
+        //let gl: GL = self.data.convert_gl_context();
+        //self.render_gl(gl, canvas);
     }
 
     fn update(&mut self, ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
-        match msg {
+        let should_action = match msg {
             DrawAreaMessage::MouseDown(event) => {
                 if event.button() == 1 {
                     let mut pan_mode = PanMode::new();
-                    pan_mode.mouse_press_event(event, &mut self.data);
+                    let should_action = pan_mode.mouse_press_event(event, &mut self.data);
                     self.pan_mode = Some(pan_mode);
+                    should_action
                 } else {
-                    self.current_mode.mouse_press_event(event, &mut self.data);
+                    self.current_mode.mouse_press_event(event, &mut self.data)
                 }
             }
             DrawAreaMessage::MouseMove(event) => {
                 if let Some(mut pan_mode) = self.pan_mode.take() {
-                    pan_mode.mouse_mouse_event(event, &mut self.data);
+                    let should_action = pan_mode.mouse_mouse_event(event, &mut self.data);
                     self.pan_mode = Some(pan_mode);
+                    should_action
                 } else {
-                    self.current_mode.mouse_mouse_event(event, &mut self.data);
+                    self.current_mode.mouse_mouse_event(event, &mut self.data)
                 }
             }
             DrawAreaMessage::MouseUp(event) => {
                 if self.pan_mode.take().is_none() {
-                    if self.current_mode.mouse_release_event(event, &mut self.data) {
-                        ctx.props()
-                            .handler
-                            .emit(ChildRequestType::ChangeMode(DrawModeType::NormalMode));
-                    }
-                    return false;
+                    self.current_mode.mouse_release_event(event, &mut self.data)
+                } else {
+                    None
+                }
+            }
+        };
+
+        if let Some(should_action) = should_action {
+            match should_action {
+                ShouldAction::BackToNormal => {
+                    ctx.props()
+                        .handler
+                        .emit(ChildRequestType::ChangeMode(DrawModeType::NormalMode));
+                }
+                ShouldAction::Rerender => {
+                    return true;
                 }
             }
         }
-        true
+        false
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
@@ -120,14 +136,49 @@ impl Component for DrawArea {
 }
 
 impl DrawArea {
-    fn render_gl(&mut self, gl: GL) {
+    fn render_2d_context(&self, canvas: HtmlCanvasElement, context: CanvasRenderingContext2d) {
+        canvas.set_width(canvas.client_width() as u32);
+        canvas.set_height(canvas.client_height() as u32);
+        context.clear_rect(
+            0.0,
+            0.0,
+            canvas.client_width() as f64,
+            canvas.client_height() as f64,
+        );
+
+        let rgba = Rgba::new(1.0, 0.0, 0.0, 1.0);
+
+        let (start_x, start_y) = convert_figure_to_device(self.data.coordinates(), -100.0, 100.0);
+        let (end_x, end_y) = convert_figure_to_device(self.data.coordinates(), 0.0, 0.0);
+
+        let mut line = Line::new(
+            start_x as f64,
+            start_y as f64,
+            end_x as f64,
+            end_y as f64,
+            rgba,
+        );
+
+        let drawer = Drawer::new(&context);
+
+        line.accept(&drawer);
+    }
+
+    #[allow(dead_code)]
+    fn render_gl(&mut self, gl: GL, canvas: HtmlCanvasElement) {
+        canvas.set_width(canvas.client_width() as u32);
+        canvas.set_height(canvas.client_height() as u32);
+
+        gl.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
+        gl.clear_color(209.0 / 255.0, 209.0 / 255.0, 209.0 / 255.0, 1.0);
+        gl.clear(GL::COLOR_BUFFER_BIT);
+
         if self.webgl_data.is_none() {
             self.webgl_data = Some(WebGLData::new(&gl).unwrap());
         }
 
         let rgba = Rgba::new(1.0, 0.0, 0.0, 1.0);
 
-        let canvas = self.data.convert_canvas();
         let (start_x, start_y) = convert_figure_to_webgl(
             self.data.coordinates(),
             canvas.client_width() as f64,
@@ -145,7 +196,7 @@ impl DrawArea {
 
         let shader_program = self.webgl_data.as_ref().unwrap().shader_program();
 
-        let drawer = Drawer::new(&gl, shader_program);
+        let drawer = DrawerGL::new(&gl, shader_program);
 
         let mut line = Line::new(start_x, start_y, end_x, end_y, rgba);
 

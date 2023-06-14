@@ -1,5 +1,7 @@
 use crate::components::draw_area::data::DrawAreaData;
 
+use super::ShouldAction;
+
 #[derive(Default)]
 pub struct PanMode {
     prev_x: f64,
@@ -16,12 +18,21 @@ impl PanMode {
 }
 
 impl PanMode {
-    pub fn mouse_press_event(&mut self, event: web_sys::MouseEvent, _data: &mut DrawAreaData) {
+    pub fn mouse_press_event(
+        &mut self,
+        event: web_sys::MouseEvent,
+        _data: &mut DrawAreaData,
+    ) -> Option<ShouldAction> {
         self.prev_x = event.offset_x() as f64;
         self.prev_y = event.offset_y() as f64;
+        None
     }
 
-    pub fn mouse_mouse_event(&mut self, event: web_sys::MouseEvent, data: &mut DrawAreaData) {
+    pub fn mouse_mouse_event(
+        &mut self,
+        event: web_sys::MouseEvent,
+        data: &mut DrawAreaData,
+    ) -> Option<ShouldAction> {
         let x = event.offset_x() as f64;
         let y = event.offset_y() as f64;
 
@@ -33,5 +44,7 @@ impl PanMode {
 
         self.prev_x = x;
         self.prev_y = y;
+
+        Some(ShouldAction::Rerender)
     }
 }

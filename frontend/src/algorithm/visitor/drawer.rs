@@ -1,19 +1,38 @@
-use web_sys::{WebGlProgram, WebGlRenderingContext};
+use web_sys::{CanvasRenderingContext2d, WebGlProgram, WebGlRenderingContext};
 
 use super::Visitor;
 
 pub struct Drawer<'a> {
+    context: &'a CanvasRenderingContext2d,
+}
+
+impl<'a> Drawer<'a> {
+    pub fn new(context: &'a CanvasRenderingContext2d) -> Self {
+        Self { context }
+    }
+}
+
+impl Visitor for Drawer<'_> {
+    fn visit_line(&self, line: &mut lib::figure::line::Line) {
+        self.context.begin_path();
+        self.context.move_to(line.start_x(), line.start_y());
+        self.context.line_to(line.end_x(), line.end_y());
+        self.context.stroke();
+    }
+}
+
+pub struct DrawerGL<'a> {
     gl: &'a WebGlRenderingContext,
     shader_program: &'a WebGlProgram,
 }
 
-impl<'a> Drawer<'a> {
+impl<'a> DrawerGL<'a> {
     pub fn new(gl: &'a WebGlRenderingContext, shader_program: &'a WebGlProgram) -> Self {
         Self { gl, shader_program }
     }
 }
 
-impl Visitor for Drawer<'_> {
+impl Visitor for DrawerGL<'_> {
     fn visit_line(&self, line: &mut lib::figure::line::Line) {
         let vectices: Vec<f32> = vec![
             line.start_x() as f32,

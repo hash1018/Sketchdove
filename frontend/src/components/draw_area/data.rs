@@ -1,6 +1,7 @@
 use wasm_bindgen::JsCast;
 use web_sys::{
-    HtmlCanvasElement, WebGlBuffer, WebGlProgram, WebGlRenderingContext as GL, WebGlShader,
+    CanvasRenderingContext2d, HtmlCanvasElement, WebGlBuffer, WebGlProgram,
+    WebGlRenderingContext as GL, WebGlShader,
 };
 use yew::NodeRef;
 
@@ -28,6 +29,16 @@ impl DrawAreaData {
         let canvas = self.node_ref.cast::<HtmlCanvasElement>().unwrap();
         canvas
             .get_context("webgl")
+            .unwrap()
+            .unwrap()
+            .dyn_into()
+            .unwrap()
+    }
+
+    pub fn convert_2d_context(&self) -> CanvasRenderingContext2d {
+        let canvas = self.node_ref.cast::<HtmlCanvasElement>().unwrap();
+        canvas
+            .get_context("2d")
             .unwrap()
             .unwrap()
             .dyn_into()

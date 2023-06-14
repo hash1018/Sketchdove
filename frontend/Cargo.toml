@@ -32,5 +32,6 @@ features = [
   'WebGlRenderingContext',
   'WebGlShader',
   'WebGlUniformLocation',
+  'CanvasRenderingContext2d',
 ]
 

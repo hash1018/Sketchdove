@@ -1,6 +1,6 @@
 use crate::components::draw_area::data::DrawAreaData;
 
-use super::DrawMode;
+use super::{DrawMode, ShouldAction};
 
 #[derive(Default)]
 pub struct LineMode {}
@@ -12,16 +12,28 @@ impl LineMode {
 }
 
 impl DrawMode for LineMode {
-    fn mouse_press_event(&mut self, _event: web_sys::MouseEvent, _data: &mut DrawAreaData) {}
+    fn mouse_press_event(
+        &mut self,
+        _event: web_sys::MouseEvent,
+        _data: &mut DrawAreaData,
+    ) -> Option<ShouldAction> {
+        None
+    }
 
-    fn mouse_mouse_event(&mut self, _event: web_sys::MouseEvent, _data: &mut DrawAreaData) {}
+    fn mouse_mouse_event(
+        &mut self,
+        _event: web_sys::MouseEvent,
+        _data: &mut DrawAreaData,
+    ) -> Option<ShouldAction> {
+        None
+    }
 
     fn mouse_release_event(
         &mut self,
         _event: web_sys::MouseEvent,
         _data: &mut DrawAreaData,
-    ) -> bool {
-        true
+    ) -> Option<ShouldAction> {
+        Some(ShouldAction::BackToNormal)
     }
 
     fn get_type(&self) -> super::DrawModeType {

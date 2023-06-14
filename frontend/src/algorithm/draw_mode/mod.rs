@@ -13,10 +13,28 @@ pub enum DrawModeType {
     NormalMode,
     LineMode,
 }
+
+pub enum ShouldAction {
+    Rerender,
+    BackToNormal,
+}
+
 pub trait DrawMode {
-    fn mouse_press_event(&mut self, event: MouseEvent, data: &mut DrawAreaData);
-    fn mouse_mouse_event(&mut self, event: MouseEvent, data: &mut DrawAreaData);
-    fn mouse_release_event(&mut self, event: MouseEvent, data: &mut DrawAreaData) -> bool;
+    fn mouse_press_event(
+        &mut self,
+        event: MouseEvent,
+        data: &mut DrawAreaData,
+    ) -> Option<ShouldAction>;
+    fn mouse_mouse_event(
+        &mut self,
+        event: MouseEvent,
+        data: &mut DrawAreaData,
+    ) -> Option<ShouldAction>;
+    fn mouse_release_event(
+        &mut self,
+        event: MouseEvent,
+        data: &mut DrawAreaData,
+    ) -> Option<ShouldAction>;
     fn get_type(&self) -> DrawModeType;
 }
 
