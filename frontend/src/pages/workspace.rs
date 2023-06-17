@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
-use lib::message::ServerMessage;
+use lib::{figure::Figure, message::ServerMessage};
 use yew::{html, Component, Context, Properties};
 use yew_agent::{Bridge, Bridged};
 use yew_router::scope_ext::RouterScopeExt;
@@ -24,6 +24,7 @@ pub enum ChildRequestType {
     Leave,
     ShowChat(bool),
     ChangeMode(DrawModeType),
+    AddFigure(Box<dyn Figure>),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -36,6 +37,7 @@ pub struct Workspace {
     _event_bus: Option<Box<dyn Bridge<EventBus>>>,
     show_chat: bool,
     current_mode: DrawModeType,
+    figures: Rc<FigureList>,
 }
 
 impl Component for Workspace {
@@ -54,6 +56,7 @@ impl Component for Workspace {
             _event_bus: None,
             show_chat: false,
             current_mode: DrawModeType::SelectMode,
+            figures: Rc::new(FigureList::new()),
         }
     }
 
@@ -87,6 +90,10 @@ impl Component for Workspace {
                         return true;
                     }
                 }
+                ChildRequestType::AddFigure(figure) => {
+                    self.figures.push(figure);
+                    return true;
+                }
             },
         }
         false
@@ -98,12 +105,13 @@ impl Component for Workspace {
         let current_mode = self.current_mode;
         let handler_clone = handler.clone();
         let handler_clone2 = handler.clone();
+        let figures = self.figures.clone();
 
         html! {
             <body>
                 <div class="top"> <TitleBar {handler} {show_chat} /> </div>
                 <div class="content">
-                    <DrawArea handler = {handler_clone} {current_mode} />
+                    <DrawArea handler = {handler_clone} {current_mode} {figures} />
                     <div class="left"> <ToolBox handler = {handler_clone2} {current_mode} /> </div>
                     if show_chat {
                         <div class="chat_position"> <Chat /> </div>
@@ -123,4 +131,31 @@ fn init(ctx: &Context<Workspace>) -> (Option<WebsocketService>, Option<Box<dyn B
     };
 
     (Some(wss), Some(EventBus::bridge(Rc::new(callback))))
+}
+
+#[derive(Default)]
+pub struct FigureList {
+    list: Rc<RefCell<Vec<Box<dyn Figure>>>>,
+}
+
+impl PartialEq for FigureList {
+    fn eq(&self, other: &Self) -> bool {
+        self.list.borrow().len() == other.list.borrow().len()
+    }
+}
+
+impl FigureList {
+    fn new() -> FigureList {
+        FigureList {
+            list: Rc::new(RefCell::new(Vec::new())),
+        }
+    }
+
+    fn push(&self, figure: Box<dyn Figure>) {
+        self.list.borrow_mut().push(figure);
+    }
+
+    pub fn list(&self) -> Rc<RefCell<Vec<Box<dyn Figure>>>> {
+        self.list.clone()
+    }
 }

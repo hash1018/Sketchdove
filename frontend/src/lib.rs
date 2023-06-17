@@ -1,7 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
-use lib::figure::Figure;
-
 pub mod algorithm;
 pub mod client;
 pub mod components;
@@ -25,32 +21,5 @@ impl Coordinates {
             center_x: 100.0,
             center_y: 100.0,
         }
-    }
-}
-
-#[derive(Default)]
-pub struct FigureList {
-    list: Rc<RefCell<Vec<Box<dyn Figure>>>>,
-}
-
-impl PartialEq for FigureList {
-    fn eq(&self, other: &Self) -> bool {
-        self.list.borrow().len() == other.list.borrow().len()
-    }
-}
-
-impl FigureList {
-    pub fn new() -> FigureList {
-        FigureList {
-            list: Rc::new(RefCell::new(Vec::new())),
-        }
-    }
-
-    pub fn push(&self, figure: Box<dyn Figure>) {
-        self.list.borrow_mut().push(figure);
-    }
-
-    pub fn list(&self) -> Rc<RefCell<Vec<Box<dyn Figure>>>> {
-        self.list.clone()
     }
 }

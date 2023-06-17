@@ -1,6 +1,8 @@
-use lib::figure::{leaf::line::Line, Figure, Rgba};
+use std::rc::Rc;
+
+use lib::figure::{leaf::line::Line, Color, Figure};
 use web_sys::{
-    CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, WebGlProgram,
+    CanvasRenderingContext2d, HtmlCanvasElement, KeyboardEvent, MouseEvent, WebGlProgram,
     WebGlRenderingContext as GL,
 };
 use yew::{html, Callback, Component, Context, Properties};
@@ -13,8 +15,7 @@ use crate::{
         },
         visitor::drawer::{Drawer, DrawerGL},
     },
-    pages::workspace::ChildRequestType,
-    FigureList,
+    pages::workspace::{ChildRequestType, FigureList},
 };
 
 use self::data::{DrawAreaData, WebGLData};
@@ -25,12 +26,14 @@ pub enum DrawAreaMessage {
     MouseDown(MouseEvent),
     MouseMove(MouseEvent),
     MouseUp(MouseEvent),
+    KeyPress(KeyboardEvent),
 }
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct DrawAreaProps {
     pub handler: Callback<ChildRequestType>,
     pub current_mode: DrawModeType,
+    pub figures: Rc<FigureList>,
 }
 
 pub struct DrawArea {
@@ -38,7 +41,6 @@ pub struct DrawArea {
     current_mode: Box<dyn DrawMode>,
     pan_mode: Option<PanMode>,
     webgl_data: Option<WebGLData>,
-    figures: FigureList,
 }
 
 impl Component for DrawArea {
@@ -53,7 +55,6 @@ impl Component for DrawArea {
             current_mode: Box::new(current_mode),
             pan_mode: None,
             webgl_data: None,
-            figures: FigureList::new(),
         }
     }
 
@@ -62,15 +63,21 @@ impl Component for DrawArea {
         let old_mode = old_props.current_mode;
         if new_mode != old_mode {
             self.current_mode = new_mode.into();
+            //NOTE: Just in case where current Mode changes when drawing something.
+            if self.data.take_preview().is_some() {
+                return true;
+            }
+            return false;
         }
 
-        false
+        true
     }
 
-    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+    fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
         let canvas = self.data.convert_canvas();
         let context = self.data.convert_2d_context();
-        self.render_2d_context(canvas, context);
+        let props = ctx.props();
+        self.render_2d_context(canvas, context, props);
 
         //let canvas = self.data.convert_canvas();
         //let gl: GL = self.data.convert_gl_context();
@@ -105,6 +112,14 @@ impl Component for DrawArea {
                     None
                 }
             }
+            DrawAreaMessage::KeyPress(event) => {
+                log::info!("keypress {0}", event.key_code());
+                if event.key_code() == 27 {
+                    Some(ShouldAction::BackToSelect)
+                } else {
+                    None
+                }
+            }
         };
 
         if let Some(should_action) = should_action {
@@ -118,8 +133,9 @@ impl Component for DrawArea {
                     return true;
                 }
                 ShouldAction::AddFigure(figure) => {
-                    self.figures.push(figure);
-                    return true;
+                    ctx.props()
+                        .handler
+                        .emit(ChildRequestType::AddFigure(figure));
                 }
             }
         }
@@ -130,18 +146,24 @@ impl Component for DrawArea {
         let mousedown = ctx.link().callback(DrawAreaMessage::MouseDown);
         let mousemove = ctx.link().callback(DrawAreaMessage::MouseMove);
         let mouseup = ctx.link().callback(DrawAreaMessage::MouseUp);
+        let keypress = ctx.link().callback(DrawAreaMessage::KeyPress);
         let node_ref_clone = self.data.node_ref();
 
         html! (
             <div style="width:100%; height:100%; overflow: hidden;">
-                <canvas style="width:100%; height:100%;" onmousedown={mousedown} onmousemove={mousemove} onmouseup={mouseup} ref={node_ref_clone} />
+                <canvas style="width:100%; height:100%;" onkeydown={keypress} onmousedown={mousedown} onmousemove={mousemove} onmouseup={mouseup} ref={node_ref_clone} />
             </div>
         )
     }
 }
 
 impl DrawArea {
-    fn render_2d_context(&self, canvas: HtmlCanvasElement, context: CanvasRenderingContext2d) {
+    fn render_2d_context(
+        &mut self,
+        canvas: HtmlCanvasElement,
+        context: CanvasRenderingContext2d,
+        props: &DrawAreaProps,
+    ) {
         canvas.set_width(canvas.client_width() as u32);
         canvas.set_height(canvas.client_height() as u32);
         context.clear_rect(
@@ -151,14 +173,21 @@ impl DrawArea {
             canvas.client_height() as f64,
         );
 
+        let preview = self.data.take_preview();
+
         let drawer = Drawer::new(&context, self.data.coordinates());
 
-        let list = self.figures.list();
+        let list = props.figures.list();
 
         let mut list_borrow_mut = list.borrow_mut();
 
         for figure in list_borrow_mut.iter_mut() {
             figure.accept(&drawer);
+        }
+
+        if let Some(mut preview) = preview {
+            preview.accept(&drawer);
+            self.data.set_preview(Some(preview));
         }
     }
 
@@ -175,7 +204,7 @@ impl DrawArea {
             self.webgl_data = Some(WebGLData::new(&gl).unwrap());
         }
 
-        let rgba = Rgba::new(1.0, 0.0, 0.0, 1.0);
+        let rgba = Color::new(1.0, 0.0, 0.0, 1.0);
 
         let (start_x, start_y) = convert_figure_to_webgl(
             self.data.coordinates(),
@@ -212,7 +241,7 @@ fn _draw_triangle(
     y2: f32,
     x3: f32,
     y3: f32,
-    rgba: &Rgba,
+    rgba: &Color,
 ) {
     let vectices: Vec<f32> = vec![x, y, x2, y2, x3, y3];
     let verts = js_sys::Float32Array::from(vectices.as_slice());

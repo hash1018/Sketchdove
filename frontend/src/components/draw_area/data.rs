@@ -1,3 +1,4 @@
+use lib::figure::Figure;
 use wasm_bindgen::JsCast;
 use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, WebGlBuffer, WebGlProgram,
@@ -11,6 +12,7 @@ use crate::Coordinates;
 pub struct DrawAreaData {
     node_ref: NodeRef,
     coordinates: Coordinates,
+    preview: Option<Box<dyn Figure>>,
 }
 
 impl DrawAreaData {
@@ -18,6 +20,7 @@ impl DrawAreaData {
         Self {
             node_ref: NodeRef::default(),
             coordinates: Coordinates::new(),
+            preview: None,
         }
     }
 
@@ -56,6 +59,14 @@ impl DrawAreaData {
     pub fn set_scroll_pos(&mut self, h_pos: f64, v_pos: f64) {
         self.coordinates.scroll_h_pos = h_pos;
         self.coordinates.scroll_v_pos = v_pos;
+    }
+
+    pub fn set_preview(&mut self, preview: Option<Box<dyn Figure>>) {
+        self.preview = preview;
+    }
+
+    pub fn take_preview(&mut self) -> Option<Box<dyn Figure>> {
+        self.preview.take()
     }
 }
 
