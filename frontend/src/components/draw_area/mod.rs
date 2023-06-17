@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use lib::figure::{leaf::line::Line, Color, Figure};
+use wasm_bindgen::{prelude::Closure, JsCast};
 use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, KeyboardEvent, MouseEvent, WebGlProgram,
     WebGlRenderingContext as GL,
@@ -26,7 +27,7 @@ pub enum DrawAreaMessage {
     MouseDown(MouseEvent),
     MouseMove(MouseEvent),
     MouseUp(MouseEvent),
-    KeyPress(KeyboardEvent),
+    KeyDown(KeyboardEvent),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -41,21 +42,30 @@ pub struct DrawArea {
     current_mode: Box<dyn DrawMode>,
     pan_mode: Option<PanMode>,
     webgl_data: Option<WebGLData>,
+    keydown_closure: Option<Closure<dyn FnMut(KeyboardEvent)>>,
 }
 
 impl Component for DrawArea {
     type Message = DrawAreaMessage;
     type Properties = DrawAreaProps;
 
-    fn create(_ctx: &yew::Context<Self>) -> Self {
+    fn create(ctx: &yew::Context<Self>) -> Self {
         let data = DrawAreaData::new();
         let current_mode = SelectMode::new();
+
+        let keydown_closure = add_keydown_event(ctx);
+
         DrawArea {
             data,
             current_mode: Box::new(current_mode),
             pan_mode: None,
             webgl_data: None,
+            keydown_closure,
         }
+    }
+
+    fn destroy(&mut self, _ctx: &Context<Self>) {
+        remove_keydown_event(self.keydown_closure.take());
     }
 
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
@@ -112,10 +122,14 @@ impl Component for DrawArea {
                     None
                 }
             }
-            DrawAreaMessage::KeyPress(event) => {
-                log::info!("keypress {0}", event.key_code());
+            DrawAreaMessage::KeyDown(event) => {
+                //Esc key down.
                 if event.key_code() == 27 {
-                    Some(ShouldAction::BackToSelect)
+                    if self.current_mode.get_type() != DrawModeType::SelectMode {
+                        Some(ShouldAction::BackToSelect)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -146,12 +160,11 @@ impl Component for DrawArea {
         let mousedown = ctx.link().callback(DrawAreaMessage::MouseDown);
         let mousemove = ctx.link().callback(DrawAreaMessage::MouseMove);
         let mouseup = ctx.link().callback(DrawAreaMessage::MouseUp);
-        let keypress = ctx.link().callback(DrawAreaMessage::KeyPress);
         let node_ref_clone = self.data.node_ref();
 
         html! (
             <div style="width:100%; height:100%; overflow: hidden;">
-                <canvas style="width:100%; height:100%;" onkeydown={keypress} onmousedown={mousedown} onmousemove={mousemove} onmouseup={mouseup} ref={node_ref_clone} />
+                <canvas style="width:100%; height:100%;" onmousedown={mousedown} onmousemove={mousemove} onmouseup={mouseup} ref={node_ref_clone} />
             </div>
         )
     }
@@ -251,4 +264,29 @@ fn _draw_triangle(
     gl.uniform4f(color.as_ref(), rgba.r, rgba.g, rgba.b, rgba.a);
 
     gl.draw_arrays(GL::TRIANGLES, 0, 3);
+}
+
+fn add_keydown_event(ctx: &yew::Context<DrawArea>) -> Option<Closure<dyn FnMut(KeyboardEvent)>> {
+    if let Some(window) = web_sys::window() {
+        let link = ctx.link().clone();
+        let closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::KeyboardEvent| {
+            link.send_message(DrawAreaMessage::KeyDown(event));
+        });
+        window
+            .add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref())
+            .unwrap();
+        Some(closure)
+    } else {
+        None
+    }
+}
+
+fn remove_keydown_event(closure: Option<Closure<dyn FnMut(KeyboardEvent)>>) {
+    if let Some(window) = web_sys::window() {
+        if let Some(closure) = closure {
+            window
+                .remove_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref())
+                .unwrap();
+        }
+    }
 }
