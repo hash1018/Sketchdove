@@ -1,4 +1,4 @@
-use lib::figure::{line::Line, Rgba};
+use lib::figure::{line::Line, Figure, Rgba};
 use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, WebGlProgram,
     WebGlRenderingContext as GL,
@@ -11,10 +11,7 @@ use crate::{
         draw_mode::{
             pan_mode::PanMode, select_mode::SelectMode, DrawMode, DrawModeType, ShouldAction,
         },
-        visitor::{
-            drawer::{Drawer, DrawerGL},
-            Accepter,
-        },
+        visitor::drawer::{Drawer, DrawerGL},
     },
     pages::workspace::ChildRequestType,
 };
@@ -151,7 +148,7 @@ impl DrawArea {
         let (start_x, start_y) = convert_figure_to_device(self.data.coordinates(), -100.0, 100.0);
         let (end_x, end_y) = convert_figure_to_device(self.data.coordinates(), 0.0, 0.0);
 
-        let mut line = Line::new(
+        let line = Line::new(
             start_x as f64,
             start_y as f64,
             end_x as f64,
@@ -159,9 +156,11 @@ impl DrawArea {
             rgba,
         );
 
+        let mut figure: Box<dyn Figure> = Box::new(line);
+
         let drawer = Drawer::new(&context);
 
-        line.accept(&drawer);
+        figure.accept(&drawer);
     }
 
     #[allow(dead_code)]

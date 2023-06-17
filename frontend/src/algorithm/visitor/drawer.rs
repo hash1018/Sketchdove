@@ -1,6 +1,5 @@
+use lib::figure::Visitor;
 use web_sys::{CanvasRenderingContext2d, WebGlProgram, WebGlRenderingContext};
-
-use super::Visitor;
 
 pub struct Drawer<'a> {
     context: &'a CanvasRenderingContext2d,

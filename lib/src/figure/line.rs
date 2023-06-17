@@ -1,4 +1,4 @@
-use super::Rgba;
+use super::{Figure, Rgba};
 
 pub struct Line {
     start_x: f64,
@@ -6,6 +6,12 @@ pub struct Line {
     end_x: f64,
     end_y: f64,
     color: Rgba,
+}
+
+impl Figure for Line {
+    fn accept(&mut self, visitor: &dyn super::Visitor) {
+        visitor.visit_line(self);
+    }
 }
 
 impl Line {

@@ -1,3 +1,5 @@
+use self::line::Line;
+
 pub mod line;
 
 #[derive(Default, Copy, Clone)]
@@ -14,4 +16,10 @@ impl Rgba {
     }
 }
 
-pub trait Figure {}
+pub trait Visitor {
+    fn visit_line(&self, figure: &mut Line);
+}
+
+pub trait Figure {
+    fn accept(&mut self, visitor: &dyn Visitor);
+}
