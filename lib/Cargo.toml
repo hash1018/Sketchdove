@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 serde_json = "1.0.73"
 serde = {version = "1.0.163", features=["derive"]}
+as-dyn-trait = "0.2.0"

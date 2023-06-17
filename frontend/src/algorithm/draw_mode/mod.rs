@@ -1,3 +1,4 @@
+use lib::figure::Figure;
 use web_sys::MouseEvent;
 
 use crate::components::draw_area::data::DrawAreaData;
@@ -18,6 +19,7 @@ pub enum DrawModeType {
 pub enum ShouldAction {
     Rerender,
     BackToSelect,
+    AddFigure(Box<dyn Figure>),
 }
 
 pub trait DrawMode {

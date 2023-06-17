@@ -1,21 +1,31 @@
-use lib::figure::Visitor;
+use lib::figure::{leaf::line::Line, Visitor};
 use web_sys::{CanvasRenderingContext2d, WebGlProgram, WebGlRenderingContext};
+
+use crate::{algorithm::coordinates_converter::convert_figure_to_device, Coordinates};
 
 pub struct Drawer<'a> {
     context: &'a CanvasRenderingContext2d,
+    coordinates: &'a Coordinates,
 }
 
 impl<'a> Drawer<'a> {
-    pub fn new(context: &'a CanvasRenderingContext2d) -> Self {
-        Self { context }
+    pub fn new(context: &'a CanvasRenderingContext2d, coordinates: &'a Coordinates) -> Self {
+        Self {
+            context,
+            coordinates,
+        }
     }
 }
 
 impl Visitor for Drawer<'_> {
-    fn visit_line(&self, line: &mut lib::figure::line::Line) {
+    fn visit_line(&self, line: &mut Line) {
+        let (start_x, start_y) =
+            convert_figure_to_device(self.coordinates, line.start_x(), line.start_y());
+        let (end_x, end_y) = convert_figure_to_device(self.coordinates, line.end_x(), line.end_y());
+
         self.context.begin_path();
-        self.context.move_to(line.start_x(), line.start_y());
-        self.context.line_to(line.end_x(), line.end_y());
+        self.context.move_to(start_x as f64, start_y as f64);
+        self.context.line_to(end_x as f64, end_y as f64);
         self.context.stroke();
     }
 }
@@ -32,7 +42,7 @@ impl<'a> DrawerGL<'a> {
 }
 
 impl Visitor for DrawerGL<'_> {
-    fn visit_line(&self, line: &mut lib::figure::line::Line) {
+    fn visit_line(&self, line: &mut Line) {
         let vectices: Vec<f32> = vec![
             line.start_x() as f32,
             line.start_y() as f32,

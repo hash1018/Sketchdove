@@ -1,4 +1,4 @@
-use lib::figure::{line::Line, Figure, Rgba};
+use lib::figure::{leaf::line::Line, Figure, Rgba};
 use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, WebGlProgram,
     WebGlRenderingContext as GL,
@@ -7,13 +7,14 @@ use yew::{html, Callback, Component, Context, Properties};
 
 use crate::{
     algorithm::{
-        coordinates_converter::{convert_figure_to_device, convert_figure_to_webgl},
+        coordinates_converter::convert_figure_to_webgl,
         draw_mode::{
             pan_mode::PanMode, select_mode::SelectMode, DrawMode, DrawModeType, ShouldAction,
         },
         visitor::drawer::{Drawer, DrawerGL},
     },
     pages::workspace::ChildRequestType,
+    FigureList,
 };
 
 use self::data::{DrawAreaData, WebGLData};
@@ -37,6 +38,7 @@ pub struct DrawArea {
     current_mode: Box<dyn DrawMode>,
     pan_mode: Option<PanMode>,
     webgl_data: Option<WebGLData>,
+    figures: FigureList,
 }
 
 impl Component for DrawArea {
@@ -51,6 +53,7 @@ impl Component for DrawArea {
             current_mode: Box::new(current_mode),
             pan_mode: None,
             webgl_data: None,
+            figures: FigureList::new(),
         }
     }
 
@@ -60,6 +63,7 @@ impl Component for DrawArea {
         if new_mode != old_mode {
             self.current_mode = new_mode.into();
         }
+
         false
     }
 
@@ -113,6 +117,10 @@ impl Component for DrawArea {
                 ShouldAction::Rerender => {
                     return true;
                 }
+                ShouldAction::AddFigure(figure) => {
+                    self.figures.push(figure);
+                    return true;
+                }
             }
         }
         false
@@ -143,24 +151,15 @@ impl DrawArea {
             canvas.client_height() as f64,
         );
 
-        let rgba = Rgba::new(1.0, 0.0, 0.0, 1.0);
+        let drawer = Drawer::new(&context, self.data.coordinates());
 
-        let (start_x, start_y) = convert_figure_to_device(self.data.coordinates(), -100.0, 100.0);
-        let (end_x, end_y) = convert_figure_to_device(self.data.coordinates(), 0.0, 0.0);
+        let list = self.figures.list();
 
-        let line = Line::new(
-            start_x as f64,
-            start_y as f64,
-            end_x as f64,
-            end_y as f64,
-            rgba,
-        );
+        let mut list_borrow_mut = list.borrow_mut();
 
-        let mut figure: Box<dyn Figure> = Box::new(line);
-
-        let drawer = Drawer::new(&context);
-
-        figure.accept(&drawer);
+        for figure in list_borrow_mut.iter_mut() {
+            figure.accept(&drawer);
+        }
     }
 
     #[allow(dead_code)]

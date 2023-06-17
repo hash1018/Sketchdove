@@ -1,4 +1,6 @@
-use super::{Figure, Rgba};
+use crate::figure::{Figure, Rgba, Visitor};
+
+use super::Leaf;
 
 pub struct Line {
     start_x: f64,
@@ -8,8 +10,10 @@ pub struct Line {
     color: Rgba,
 }
 
+impl Leaf for Line {}
+
 impl Figure for Line {
-    fn accept(&mut self, visitor: &dyn super::Visitor) {
+    fn accept(&mut self, visitor: &dyn Visitor) {
         visitor.visit_line(self);
     }
 }

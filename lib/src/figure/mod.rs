@@ -1,6 +1,9 @@
-use self::line::Line;
+use as_dyn_trait::as_dyn_trait;
 
-pub mod line;
+use self::leaf::line::Line;
+
+pub mod composite;
+pub mod leaf;
 
 #[derive(Default, Copy, Clone)]
 pub struct Rgba {
@@ -20,6 +23,7 @@ pub trait Visitor {
     fn visit_line(&self, figure: &mut Line);
 }
 
+#[as_dyn_trait]
 pub trait Figure {
     fn accept(&mut self, visitor: &dyn Visitor);
 }
