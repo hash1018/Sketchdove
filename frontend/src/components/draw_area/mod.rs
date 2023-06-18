@@ -176,10 +176,11 @@ impl Component for DrawArea {
         let mouseup = ctx.link().callback(DrawAreaMessage::MouseUp);
         let wheel = ctx.link().callback(DrawAreaMessage::Wheel);
         let node_ref_clone = self.data.node_ref();
+        let current_mode = ctx.props().current_mode;
 
         html! (
             <div style="width:100%; height:100%; overflow: hidden;">
-                <canvas style="width:100%; height:100%;"
+                <canvas style={canvas_css(current_mode)}
                     onmousedown={mousedown}
                     onmousemove={mousemove}
                     onmouseup={mouseup}
@@ -309,5 +310,14 @@ fn remove_keydown_event(closure: Option<Closure<dyn FnMut(KeyboardEvent)>>) {
                 .remove_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref())
                 .unwrap();
         }
+    }
+}
+
+fn canvas_css(current_mode: DrawModeType) -> String {
+    match current_mode {
+        DrawModeType::SelectMode => {
+            String::from("width:100%; height:100%; cursor: url(\"/img/cursor.png\"), auto;")
+        }
+        DrawModeType::LineMode => String::from("width:100%; height:100%;"),
     }
 }

@@ -35,9 +35,17 @@ impl Component for TitleBar {
 
         html!(
             <div style="height: 100%; overflow: hidden;">
-                <button onclick={leave_button_clicked}> {"Leave"} </button>
-                <button onclick={chat_button_clicked}> {"Chat"} </button>
+                <button class="leave_button" onclick={leave_button_clicked}></button>
+                <button class={chat_button_css(show_chat)} onclick={chat_button_clicked}></button>
             </div>
         )
+    }
+}
+
+fn chat_button_css(show_chat: bool) -> String {
+    if show_chat {
+        String::from("chat_button_selected")
+    } else {
+        String::from("chat_button")
     }
 }

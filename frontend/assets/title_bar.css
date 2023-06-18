@@ -1,0 +1,34 @@
+.leave_button {
+    width: 48px;
+    height: 48px;
+    background-color: transparent;
+    border:0px;
+    background-image: url("/img/leave.png");
+    background-repeat: no-repeat;
+    background-position: center;
+}
+.leave_button:hover {
+    background-color: black;
+}
+
+.chat_button {
+    width: 48px;
+    height: 48px;
+    background-color: transparent;
+    border:0px;
+    background-image: url("/img/chat.png");
+    background-repeat: no-repeat;
+    background-position: center;
+}
+.chat_button:hover {
+    background-color: black;
+}
+.chat_button_selected {
+    width: 48px;
+    height: 48px;
+    background-color: #0095FF;
+    border:0px;
+    background-image: url("/img/chat.png");
+    background-repeat: no-repeat;
+    background-position: center;
+}
