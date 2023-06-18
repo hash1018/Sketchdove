@@ -4,7 +4,7 @@ use lib::figure::{leaf::line::Line, Color, Figure};
 use wasm_bindgen::{prelude::Closure, JsCast};
 use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, KeyboardEvent, MouseEvent, WebGlProgram,
-    WebGlRenderingContext as GL,
+    WebGlRenderingContext as GL, WheelEvent,
 };
 use yew::{html, Callback, Component, Context, Properties};
 
@@ -28,6 +28,7 @@ pub enum DrawAreaMessage {
     MouseMove(MouseEvent),
     MouseUp(MouseEvent),
     KeyDown(KeyboardEvent),
+    Wheel(WheelEvent),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -134,6 +135,19 @@ impl Component for DrawArea {
                     None
                 }
             }
+            DrawAreaMessage::Wheel(event) => {
+                let result = if event.delta_y() < 0.0 {
+                    self.data.zoom_in(event)
+                } else {
+                    self.data.zoom_out(event)
+                };
+
+                if result.is_some() {
+                    Some(ShouldAction::Rerender)
+                } else {
+                    None
+                }
+            }
         };
 
         if let Some(should_action) = should_action {
@@ -160,11 +174,18 @@ impl Component for DrawArea {
         let mousedown = ctx.link().callback(DrawAreaMessage::MouseDown);
         let mousemove = ctx.link().callback(DrawAreaMessage::MouseMove);
         let mouseup = ctx.link().callback(DrawAreaMessage::MouseUp);
+        let wheel = ctx.link().callback(DrawAreaMessage::Wheel);
         let node_ref_clone = self.data.node_ref();
 
         html! (
             <div style="width:100%; height:100%; overflow: hidden;">
-                <canvas style="width:100%; height:100%;" onmousedown={mousedown} onmousemove={mousemove} onmouseup={mouseup} ref={node_ref_clone} />
+                <canvas style="width:100%; height:100%;"
+                    onmousedown={mousedown}
+                    onmousemove={mousemove}
+                    onmouseup={mouseup}
+                    onwheel={wheel}
+                    ref={node_ref_clone}
+                />
             </div>
         )
     }

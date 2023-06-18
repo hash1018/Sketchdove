@@ -7,14 +7,14 @@ pub fn convert_device_to_webgl(width: f64, height: f64, x: f64, y: f64) -> (f64,
     (out_x, out_y)
 }
 
-pub fn convert_figure_to_device(coordinates: &Coordinates, x: f64, y: f64) -> (i32, i32) {
+pub fn convert_figure_to_device(coordinates: &Coordinates, x: f64, y: f64) -> (f64, f64) {
     let out_x = (x * coordinates.zoom_rate) - coordinates.scroll_h_pos
         + (coordinates.center_x * coordinates.zoom_rate);
     let out_y = -1.0
         * ((y * coordinates.zoom_rate) + coordinates.scroll_v_pos
             - (coordinates.center_y * coordinates.zoom_rate));
 
-    (out_x as i32, out_y as i32)
+    (out_x, out_y)
 }
 
 pub fn convert_device_to_figure(coordinates: &Coordinates, x: f64, y: f64) -> (f64, f64) {
@@ -22,8 +22,9 @@ pub fn convert_device_to_figure(coordinates: &Coordinates, x: f64, y: f64) -> (f
         * 1.000
         / coordinates.zoom_rate;
     let out_y = -1.0
-        * ((y * coordinates.zoom_rate) + coordinates.scroll_v_pos
-            - (coordinates.center_y * coordinates.zoom_rate));
+        * (y + coordinates.scroll_v_pos - (coordinates.center_y * coordinates.zoom_rate))
+        * 1.000
+        / coordinates.zoom_rate;
 
     (out_x, out_y)
 }

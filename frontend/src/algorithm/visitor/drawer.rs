@@ -24,8 +24,8 @@ impl Visitor for Drawer<'_> {
         let (end_x, end_y) = convert_figure_to_device(self.coordinates, line.end_x(), line.end_y());
 
         self.context.begin_path();
-        self.context.move_to(start_x as f64, start_y as f64);
-        self.context.line_to(end_x as f64, end_y as f64);
+        self.context.move_to(start_x, start_y);
+        self.context.line_to(end_x, end_y);
         self.context.stroke();
     }
 }

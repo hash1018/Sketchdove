@@ -2,11 +2,11 @@ use lib::figure::Figure;
 use wasm_bindgen::JsCast;
 use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, WebGlBuffer, WebGlProgram,
-    WebGlRenderingContext as GL, WebGlShader,
+    WebGlRenderingContext as GL, WebGlShader, WheelEvent,
 };
 use yew::NodeRef;
 
-use crate::Coordinates;
+use crate::{algorithm::coordinates_converter::convert_device_to_figure, Coordinates};
 
 #[derive(Default)]
 pub struct DrawAreaData {
@@ -67,6 +67,54 @@ impl DrawAreaData {
 
     pub fn take_preview(&mut self) -> Option<Box<dyn Figure>> {
         self.preview.take()
+    }
+
+    pub fn zoom_in(&mut self, event: WheelEvent) -> Option<()> {
+        let device_x = event.offset_x() as f64;
+        let device_y = event.offset_y() as f64;
+        let (x, y) = convert_device_to_figure(self.coordinates(), device_x, device_y);
+        let zoom_rate = self.coordinates.zoom_rate;
+
+        if (1.0..4.0).contains(&zoom_rate) {
+            self.coordinates.zoom_rate += 1.0;
+        } else if zoom_rate < 0.8 {
+            self.coordinates.zoom_rate += 0.2;
+        } else if (0.8..1.0).contains(&zoom_rate) {
+            self.coordinates.zoom_rate = 1.0;
+        } else {
+            return None;
+        }
+
+        self.coordinates.scroll_v_pos = -1.0 * (self.coordinates.zoom_rate * y) - device_y
+            + (self.coordinates.center_y * self.coordinates.zoom_rate);
+        self.coordinates.scroll_h_pos = self.coordinates.zoom_rate * x - device_x
+            + (self.coordinates.center_x * self.coordinates.zoom_rate);
+
+        Some(())
+    }
+
+    pub fn zoom_out(&mut self, event: WheelEvent) -> Option<()> {
+        let device_x = event.offset_x() as f64;
+        let device_y = event.offset_y() as f64;
+        let (x, y) = convert_device_to_figure(self.coordinates(), device_x, device_y);
+        let zoom_rate = self.coordinates.zoom_rate;
+
+        if zoom_rate > 2.0 {
+            self.coordinates.zoom_rate -= 1.0;
+        } else if zoom_rate <= 2.0 && zoom_rate > 1.0 {
+            self.coordinates.zoom_rate -= 0.5;
+        } else if zoom_rate <= 1.0 && zoom_rate > 0.5 {
+            self.coordinates.zoom_rate -= 0.2;
+        } else {
+            return None;
+        }
+
+        self.coordinates.scroll_v_pos = -1.0 * (self.coordinates.zoom_rate * y) - device_y
+            + (self.coordinates.center_y * self.coordinates.zoom_rate);
+        self.coordinates.scroll_h_pos = self.coordinates.zoom_rate * x - device_x
+            + (self.coordinates.center_x * self.coordinates.zoom_rate);
+
+        Some(())
     }
 }
 
