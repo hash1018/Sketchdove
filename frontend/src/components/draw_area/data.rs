@@ -6,7 +6,10 @@ use web_sys::{
 };
 use yew::NodeRef;
 
-use crate::{algorithm::coordinates_converter::convert_device_to_figure, Coordinates};
+use crate::{
+    algorithm::{coordinates_converter::convert_device_to_figure, draw_mode::ShouldAction},
+    Coordinates,
+};
 
 #[derive(Default)]
 pub struct DrawAreaData {
@@ -61,6 +64,11 @@ impl DrawAreaData {
         self.coordinates.scroll_v_pos = v_pos;
     }
 
+    pub fn append_scroll_pos(&mut self, h_pos: f64, v_pos: f64) {
+        self.coordinates.scroll_h_pos += h_pos;
+        self.coordinates.scroll_v_pos += v_pos;
+    }
+
     pub fn set_preview(&mut self, preview: Option<Box<dyn Figure>>) {
         self.preview = preview;
     }
@@ -69,20 +77,23 @@ impl DrawAreaData {
         self.preview.take()
     }
 
-    pub fn zoom_in(&mut self, event: WheelEvent) -> Option<()> {
+    pub fn zoom_in(&mut self, event: WheelEvent) -> Option<ShouldAction> {
         let device_x = event.offset_x() as f64;
         let device_y = event.offset_y() as f64;
         let (x, y) = convert_device_to_figure(self.coordinates(), device_x, device_y);
-        let zoom_rate = self.coordinates.zoom_rate;
 
-        if (1.0..4.0).contains(&zoom_rate) {
-            self.coordinates.zoom_rate += 1.0;
-        } else if zoom_rate < 0.8 {
-            self.coordinates.zoom_rate += 0.2;
-        } else if (0.8..1.0).contains(&zoom_rate) {
-            self.coordinates.zoom_rate = 1.0;
+        let delta = event.delta_y().abs();
+
+        let zoom = if delta < 10.0 { 0.02 } else { 0.2 };
+
+        if self.coordinates.zoom_rate < 4.0 {
+            self.coordinates.zoom_rate += zoom;
         } else {
             return None;
+        }
+
+        if self.coordinates.zoom_rate > 4.0 {
+            self.coordinates.zoom_rate = 4.0;
         }
 
         self.coordinates.scroll_v_pos = -1.0 * (self.coordinates.zoom_rate * y) - device_y
@@ -90,23 +101,26 @@ impl DrawAreaData {
         self.coordinates.scroll_h_pos = self.coordinates.zoom_rate * x - device_x
             + (self.coordinates.center_x * self.coordinates.zoom_rate);
 
-        Some(())
+        Some(ShouldAction::Rerender)
     }
 
-    pub fn zoom_out(&mut self, event: WheelEvent) -> Option<()> {
+    pub fn zoom_out(&mut self, event: WheelEvent) -> Option<ShouldAction> {
         let device_x = event.offset_x() as f64;
         let device_y = event.offset_y() as f64;
         let (x, y) = convert_device_to_figure(self.coordinates(), device_x, device_y);
-        let zoom_rate = self.coordinates.zoom_rate;
 
-        if zoom_rate > 2.0 {
-            self.coordinates.zoom_rate -= 1.0;
-        } else if zoom_rate <= 2.0 && zoom_rate > 1.0 {
-            self.coordinates.zoom_rate -= 0.5;
-        } else if zoom_rate <= 1.0 && zoom_rate > 0.5 {
-            self.coordinates.zoom_rate -= 0.2;
+        let delta = event.delta_y().abs();
+
+        let zoom = if delta < 10.0 { 0.02 } else { 0.2 };
+
+        if self.coordinates.zoom_rate > 0.5 {
+            self.coordinates.zoom_rate -= zoom;
         } else {
             return None;
+        }
+
+        if self.coordinates.zoom_rate < 0.5 {
+            self.coordinates.zoom_rate = 0.5;
         }
 
         self.coordinates.scroll_v_pos = -1.0 * (self.coordinates.zoom_rate * y) - device_y
@@ -114,7 +128,7 @@ impl DrawAreaData {
         self.coordinates.scroll_h_pos = self.coordinates.zoom_rate * x - device_x
             + (self.coordinates.center_x * self.coordinates.zoom_rate);
 
-        Some(())
+        Some(ShouldAction::Rerender)
     }
 }
 

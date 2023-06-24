@@ -136,16 +136,17 @@ impl Component for DrawArea {
                 }
             }
             DrawAreaMessage::Wheel(event) => {
-                let result = if event.delta_y() < 0.0 {
-                    self.data.zoom_in(event)
+                if event.ctrl_key() || event.meta_key() {
+                    if event.delta_y() < 0.0 {
+                        self.data.zoom_in(event)
+                    } else {
+                        self.data.zoom_out(event)
+                    }
                 } else {
-                    self.data.zoom_out(event)
-                };
+                    self.data
+                        .append_scroll_pos(event.delta_x(), event.delta_y());
 
-                if result.is_some() {
                     Some(ShouldAction::Rerender)
-                } else {
-                    None
                 }
             }
         };
