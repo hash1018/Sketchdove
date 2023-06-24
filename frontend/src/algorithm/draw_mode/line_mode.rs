@@ -1,6 +1,6 @@
 use lib::figure::{leaf::line::Line, Color, Figure};
 
-use crate::components::draw_area::data::DrawAreaData;
+use crate::{base::DrawOption, components::draw_area::data::DrawAreaData};
 
 use super::{DrawMode, ShouldAction};
 
@@ -52,7 +52,7 @@ impl DrawMode for LineMode {
                 let (x, y) = self.convert_figure_coordinates(&event, data);
                 let preview = set_end_point_to_preview(preview, x, y);
                 data.set_preview(Some(preview));
-                return Some(ShouldAction::Rerender);
+                return Some(ShouldAction::Rerender(DrawOption::DrawAll));
             }
         }
         None

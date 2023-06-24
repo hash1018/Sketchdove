@@ -1,4 +1,4 @@
-use crate::components::draw_area::data::DrawAreaData;
+use crate::{base::DrawOption, components::draw_area::data::DrawAreaData};
 
 use super::ShouldAction;
 
@@ -25,7 +25,7 @@ impl PanMode {
     ) -> Option<ShouldAction> {
         self.prev_x = event.offset_x() as f64;
         self.prev_y = event.offset_y() as f64;
-        None
+        Some(ShouldAction::Rerender(DrawOption::Remain))
     }
 
     pub fn mouse_mouse_event(
@@ -45,6 +45,6 @@ impl PanMode {
         self.prev_x = x;
         self.prev_y = y;
 
-        Some(ShouldAction::Rerender)
+        Some(ShouldAction::Rerender(DrawOption::DrawAll))
     }
 }

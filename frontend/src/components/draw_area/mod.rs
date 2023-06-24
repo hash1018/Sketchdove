@@ -11,11 +11,10 @@ use yew::{html, Callback, Component, Context, Properties};
 use crate::{
     algorithm::{
         coordinates_converter::convert_figure_to_webgl,
-        draw_mode::{
-            pan_mode::PanMode, select_mode::SelectMode, DrawMode, DrawModeType, ShouldAction,
-        },
+        draw_mode::{pan_mode::PanMode, select_mode::SelectMode, DrawMode},
         visitor::drawer::{Drawer, DrawerGL},
     },
+    base::{DrawModeType, DrawOption, ShouldAction},
     pages::workspace::{ChildRequestType, FigureList},
 };
 
@@ -44,6 +43,7 @@ pub struct DrawArea {
     pan_mode: Option<PanMode>,
     webgl_data: Option<WebGLData>,
     keydown_closure: Option<Closure<dyn FnMut(KeyboardEvent)>>,
+    draw_option: DrawOption,
 }
 
 impl Component for DrawArea {
@@ -62,6 +62,7 @@ impl Component for DrawArea {
             pan_mode: None,
             webgl_data: None,
             keydown_closure,
+            draw_option: DrawOption::DrawAll,
         }
     }
 
@@ -76,12 +77,14 @@ impl Component for DrawArea {
             self.current_mode = new_mode.into();
             //NOTE: Just in case where current Mode changes when drawing something.
             if self.data.take_preview().is_some() {
-                return true;
+                self.draw_option = DrawOption::DrawAll;
+            } else {
+                self.draw_option = DrawOption::Remain;
             }
-            return false;
+            return true;
         }
 
-        true
+        false
     }
 
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
@@ -120,7 +123,7 @@ impl Component for DrawArea {
                 if self.pan_mode.take().is_none() {
                     self.current_mode.mouse_release_event(event, &mut self.data)
                 } else {
-                    None
+                    Some(ShouldAction::Rerender(DrawOption::Remain))
                 }
             }
             DrawAreaMessage::KeyDown(event) => {
@@ -146,7 +149,7 @@ impl Component for DrawArea {
                     self.data
                         .append_scroll_pos(event.delta_x(), event.delta_y());
 
-                    Some(ShouldAction::Rerender)
+                    Some(ShouldAction::Rerender(DrawOption::DrawAll))
                 }
             }
         };
@@ -158,7 +161,8 @@ impl Component for DrawArea {
                         .handler
                         .emit(ChildRequestType::ChangeMode(DrawModeType::SelectMode));
                 }
-                ShouldAction::Rerender => {
+                ShouldAction::Rerender(draw_option) => {
+                    self.draw_option = draw_option;
                     return true;
                 }
                 ShouldAction::AddFigure(figure) => {
@@ -181,7 +185,7 @@ impl Component for DrawArea {
 
         html! (
             <div style="width:100%; height:100%; overflow: hidden;">
-                <canvas style={canvas_css(current_mode)}
+                <canvas style={canvas_css(self, current_mode)}
                     onmousedown={mousedown}
                     onmousemove={mousemove}
                     onmouseup={mouseup}
@@ -200,6 +204,10 @@ impl DrawArea {
         context: CanvasRenderingContext2d,
         props: &DrawAreaProps,
     ) {
+        if self.draw_option == DrawOption::Remain {
+            return;
+        }
+
         canvas.set_width(canvas.client_width() as u32);
         canvas.set_height(canvas.client_height() as u32);
         context.clear_rect(
@@ -314,11 +322,15 @@ fn remove_keydown_event(closure: Option<Closure<dyn FnMut(KeyboardEvent)>>) {
     }
 }
 
-fn canvas_css(current_mode: DrawModeType) -> String {
+fn canvas_css(draw_area: &DrawArea, current_mode: DrawModeType) -> &'static str {
+    if draw_area.pan_mode.is_some() {
+        return "width:100%; height:100%; cursor: grabbing;";
+    }
+
     match current_mode {
         DrawModeType::SelectMode => {
-            String::from("width:100%; height:100%; cursor: url(\"/img/cursor.png\"), auto;")
+            "width:100%; height:100%; cursor: url(\"/img/cursor.png\"), auto;"
         }
-        DrawModeType::LineMode => String::from("width:100%; height:100%;"),
+        DrawModeType::LineMode => "width:100%; height:100%; cursor: crosshair;",
     }
 }

@@ -1,4 +1,5 @@
 pub mod algorithm;
+pub mod base;
 pub mod client;
 pub mod components;
 pub mod pages;

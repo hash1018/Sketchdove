@@ -6,7 +6,7 @@ use yew_agent::{Bridge, Bridged};
 use yew_router::scope_ext::RouterScopeExt;
 
 use crate::{
-    algorithm::draw_mode::DrawModeType,
+    base::DrawModeType,
     client::{event_bus::EventBus, websocket_service::WebsocketService},
     components::{chat::Chat, draw_area::DrawArea, title_bar::TitleBar, tool_box::ToolBox},
     pages::app::user_name,

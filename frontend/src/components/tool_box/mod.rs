@@ -1,4 +1,4 @@
-use crate::{algorithm::draw_mode::DrawModeType, pages::workspace::ChildRequestType};
+use crate::{base::DrawModeType, pages::workspace::ChildRequestType};
 use yew::{html, Callback, Component, Properties};
 
 #[derive(Clone, PartialEq, Properties)]

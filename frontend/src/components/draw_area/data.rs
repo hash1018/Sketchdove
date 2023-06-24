@@ -7,7 +7,8 @@ use web_sys::{
 use yew::NodeRef;
 
 use crate::{
-    algorithm::{coordinates_converter::convert_device_to_figure, draw_mode::ShouldAction},
+    algorithm::coordinates_converter::convert_device_to_figure,
+    base::{DrawOption, ShouldAction},
     Coordinates,
 };
 
@@ -101,7 +102,7 @@ impl DrawAreaData {
         self.coordinates.scroll_h_pos = self.coordinates.zoom_rate * x - device_x
             + (self.coordinates.center_x * self.coordinates.zoom_rate);
 
-        Some(ShouldAction::Rerender)
+        Some(ShouldAction::Rerender(DrawOption::DrawAll))
     }
 
     pub fn zoom_out(&mut self, event: WheelEvent) -> Option<ShouldAction> {
@@ -128,7 +129,7 @@ impl DrawAreaData {
         self.coordinates.scroll_h_pos = self.coordinates.zoom_rate * x - device_x
             + (self.coordinates.center_x * self.coordinates.zoom_rate);
 
-        Some(ShouldAction::Rerender)
+        Some(ShouldAction::Rerender(DrawOption::DrawAll))
     }
 }
 
