@@ -8,16 +8,23 @@ use yew_router::scope_ext::RouterScopeExt;
 use crate::{
     base::DrawModeType,
     client::{event_bus::EventBus, websocket_service::WebsocketService},
-    components::{chat::Chat, draw_area::DrawArea, title_bar::TitleBar, tool_box::ToolBox},
+    components::{
+        chat::Chat,
+        draw_area::DrawArea,
+        login::{Login, LoginNotifyMessage},
+        title_bar::TitleBar,
+        tool_box::ToolBox,
+    },
     pages::app::user_name,
 };
 
-use super::app::Route;
+use super::app::{set_user_name, Route};
 
 pub enum WorkSpaceMessage {
     HandleServerMessage(ServerMessage),
     HandleChildRequest(ChildRequestType),
     RequestInit,
+    HandleLoginNotifyMessage(LoginNotifyMessage),
 }
 
 pub enum ChildRequestType {
@@ -38,6 +45,7 @@ pub struct Workspace {
     show_chat: bool,
     current_mode: DrawModeType,
     figures: Rc<FigureList>,
+    logined: bool,
 }
 
 impl Component for Workspace {
@@ -57,6 +65,7 @@ impl Component for Workspace {
             show_chat: false,
             current_mode: DrawModeType::SelectMode,
             figures: Rc::new(FigureList::new()),
+            logined: false,
         }
     }
 
@@ -69,8 +78,13 @@ impl Component for Workspace {
     fn update(&mut self, ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
         match msg {
             WorkSpaceMessage::RequestInit => {
+                let user_name = user_name().unwrap();
+                let room_id = ctx.props().id.clone();
+                log::info!("connect websocket user_name {user_name}, room_id {room_id}");
+
                 (self.wss, self._event_bus) = init(ctx);
-                return false;
+                self.logined = true;
+                return true;
             }
             WorkSpaceMessage::HandleServerMessage(server_message) => {
                 log::debug!("received message from event_bus {server_message:?}");
@@ -95,11 +109,35 @@ impl Component for Workspace {
                     return true;
                 }
             },
+            WorkSpaceMessage::HandleLoginNotifyMessage(msg) => match msg {
+                LoginNotifyMessage::EnterRoom(name, _room_id) => {
+                    set_user_name(Some(name));
+                    let link = ctx.link();
+                    link.send_message(WorkSpaceMessage::RequestInit);
+                }
+            },
         }
         false
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
+        if self.logined {
+            self.show_draw_area(ctx)
+        } else {
+            let handler = ctx
+                .link()
+                .callback(WorkSpaceMessage::HandleLoginNotifyMessage);
+            html! {
+               <div>
+                   <Login {handler} hide_create_button = {true} />
+               </div>
+            }
+        }
+    }
+}
+
+impl Workspace {
+    fn show_draw_area(&self, ctx: &yew::Context<Workspace>) -> yew::Html {
         let handler = ctx.link().callback(WorkSpaceMessage::HandleChildRequest);
         let show_chat = self.show_chat;
         let current_mode = self.current_mode;
