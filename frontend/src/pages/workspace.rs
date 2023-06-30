@@ -84,6 +84,11 @@ impl Component for Workspace {
 
                 (self.wss, self._event_bus) = init(ctx);
                 self.logined = true;
+
+                if let Some(wss) = self.wss.as_ref() {
+                    wss.send(lib::message::ClientMessage::Join(room_id, user_name));
+                }
+
                 return true;
             }
             WorkSpaceMessage::HandleServerMessage(server_message) => {

@@ -2,11 +2,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ServerMessage {
-    Test,
+    UserJoined(UserId),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ClientMessage {
-    Test,
     Disconnect,
+    Join(RoomId, UserId),
 }
+
+type RoomId = String;
+type UserId = String;

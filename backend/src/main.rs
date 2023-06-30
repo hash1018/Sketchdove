@@ -8,13 +8,17 @@ use lib::{IP_ADDRESS, PORT};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing::log;
 
+use crate::server::ServerApp;
+
 mod handler;
+mod server;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(name = "server", about = "A server for our wasm project!")]
@@ -39,7 +43,9 @@ async fn main() {
     // enable console logging
     tracing_subscriber::fmt::init();
 
-    let app = using_serve_dir(opt.clone());
+    let server_app = Arc::new(ServerApp::new());
+
+    let app = using_serve_dir(opt.clone(), server_app);
 
     let sock_addr = SocketAddr::from((
         IpAddr::from_str(IP_ADDRESS).unwrap(),
@@ -61,7 +67,7 @@ async fn shutdown_signal() {
         .expect("expect tokio signal ctrl-c");
 }
 
-fn using_serve_dir(opt: Opt) -> Router {
+fn using_serve_dir(opt: Opt, server_app: Arc<ServerApp>) -> Router {
     let closure = |req: Request<Body>| async move {
         match ServeDir::new(&opt.static_dir).oneshot(req).await {
             Ok(res) => {
@@ -96,6 +102,7 @@ fn using_serve_dir(opt: Opt) -> Router {
 
     Router::new()
         .route("/websocket", get(websocket_handler))
+        .with_state(server_app)
         .fallback_service(get(closure))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
 }
