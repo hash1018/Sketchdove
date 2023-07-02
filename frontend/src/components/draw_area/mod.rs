@@ -84,6 +84,11 @@ impl Component for DrawArea {
             return true;
         }
 
+        if ctx.props().figures.is_modified() {
+            ctx.props().figures.reset_modified();
+            return true;
+        }
+
         false
     }
 

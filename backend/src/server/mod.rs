@@ -33,12 +33,12 @@ impl ServerApp {
             sender,
         };
 
-        app.set_channel(receiver);
+        app.run(receiver);
 
         app
     }
 
-    fn set_channel(&self, mut receiver: Receiver<ServerAppMessage>) {
+    fn run(&self, mut receiver: Receiver<ServerAppMessage>) {
         let rooms_clone = self.rooms.clone();
         tokio::spawn(async move {
             while let Some(message) = receiver.recv().await {

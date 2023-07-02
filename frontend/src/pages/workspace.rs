@@ -93,6 +93,10 @@ impl Component for Workspace {
             }
             WorkSpaceMessage::HandleServerMessage(server_message) => {
                 log::debug!("received message from event_bus {server_message:?}");
+                if let ServerMessage::FigureAdded(data) = server_message {
+                    self.figures.push(data.into());
+                    return true;
+                }
             }
             WorkSpaceMessage::HandleChildRequest(request) => match request {
                 ChildRequestType::Leave => {
@@ -110,8 +114,10 @@ impl Component for Workspace {
                     }
                 }
                 ChildRequestType::AddFigure(figure) => {
-                    self.figures.push(figure);
-                    return true;
+                    let data = figure.data();
+                    if let Some(wss) = self.wss.as_ref() {
+                        wss.send(lib::message::ClientMessage::AddFigure(data));
+                    }
                 }
             },
             WorkSpaceMessage::HandleLoginNotifyMessage(msg) => match msg {
@@ -179,6 +185,7 @@ fn init(ctx: &Context<Workspace>) -> (Option<WebsocketService>, Option<Box<dyn B
 #[derive(Default)]
 pub struct FigureList {
     list: Rc<RefCell<Vec<Box<dyn Figure>>>>,
+    is_modified: Rc<RefCell<bool>>,
 }
 
 impl PartialEq for FigureList {
@@ -191,14 +198,24 @@ impl FigureList {
     fn new() -> FigureList {
         FigureList {
             list: Rc::new(RefCell::new(Vec::new())),
+            is_modified: Rc::new(RefCell::new(false)),
         }
     }
 
     fn push(&self, figure: Box<dyn Figure>) {
         self.list.borrow_mut().push(figure);
+        *self.is_modified.borrow_mut() = true;
     }
 
     pub fn list(&self) -> Rc<RefCell<Vec<Box<dyn Figure>>>> {
         self.list.clone()
+    }
+
+    pub fn is_modified(&self) -> bool {
+        *self.is_modified.borrow()
+    }
+
+    pub fn reset_modified(&self) {
+        *self.is_modified.borrow_mut() = false;
     }
 }
