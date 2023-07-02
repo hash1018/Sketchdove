@@ -56,7 +56,7 @@ impl ServerApp {
         log::info!("make room room_id = {room_id}");
         let mut rooms_write = self.rooms.lock().await;
         if rooms_write.get(&*room_id).is_some() {
-            return Err(ServerAppError::RoomAlreadyExist(room_id.clone()));
+            return Err(ServerAppError::RoomAlreadyExist(room_id));
         }
 
         let new_room = Room::new(room_id.clone(), self.sender.clone());
