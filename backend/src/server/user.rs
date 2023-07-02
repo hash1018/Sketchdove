@@ -12,7 +12,7 @@ use tracing::log::{self};
 use super::room::RoomMessage;
 
 pub struct User {
-    id: String,
+    id: Arc<str>,
     room_sender: Arc<Mutex<Option<Sender<RoomMessage>>>>,
     socket_sender: SplitSink<WebSocket, Message>,
     socket_receiver: Option<SplitStream<WebSocket>>,
@@ -26,7 +26,7 @@ impl fmt::Debug for User {
 
 impl User {
     pub fn new(
-        id: String,
+        id: Arc<str>,
         sender: SplitSink<WebSocket, Message>,
         receiver: SplitStream<WebSocket>,
     ) -> Self {
@@ -51,7 +51,7 @@ impl User {
         });
     }
 
-    pub fn id(&self) -> String {
+    pub fn id(&self) -> Arc<str> {
         self.id.clone()
     }
 
@@ -62,14 +62,13 @@ impl User {
 }
 
 async fn handle_message(
-    id: String,
+    id: Arc<str>,
     room_sender: Arc<Mutex<Option<Sender<RoomMessage>>>>,
     mut socket_receiver: SplitStream<WebSocket>,
 ) {
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(message)) = socket_receiver.next().await {
             if let Message::Text(message) = message {
-                log::info!("text message");
                 let message: ClientMessage = serde_json::from_str(&message).unwrap();
                 let room_message = match message {
                     ClientMessage::Disconnect => {

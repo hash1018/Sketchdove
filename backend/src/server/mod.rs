@@ -12,16 +12,16 @@ pub mod room;
 pub mod user;
 
 pub enum ServerAppMessage {
-    DeleteRoom(String),
+    DeleteRoom(Arc<str>),
 }
 
 pub enum ServerAppError {
-    RoomAlreadyExist(String),
-    RoomDoesNotExist(String),
+    RoomAlreadyExist(Arc<str>),
+    RoomDoesNotExist(Arc<str>),
 }
 
 pub struct ServerApp {
-    rooms: Arc<Mutex<HashMap<String, Room>>>,
+    rooms: Arc<Mutex<HashMap<Arc<str>, Room>>>,
     sender: Sender<ServerAppMessage>,
 }
 
@@ -52,11 +52,11 @@ impl ServerApp {
         });
     }
 
-    pub async fn make_room(&self, room_id: String) -> Result<(), ServerAppError> {
+    pub async fn make_room(&self, room_id: Arc<str>) -> Result<(), ServerAppError> {
         log::info!("make room room_id = {room_id}");
         let mut rooms_write = self.rooms.lock().await;
-        if rooms_write.get(&room_id).is_some() {
-            return Err(ServerAppError::RoomAlreadyExist(room_id));
+        if rooms_write.get(&*room_id).is_some() {
+            return Err(ServerAppError::RoomAlreadyExist(room_id.clone()));
         }
 
         let new_room = Room::new(room_id.clone(), self.sender.clone());
@@ -66,15 +66,15 @@ impl ServerApp {
         Ok(())
     }
 
-    pub async fn check_exist_room(&self, room_id: &str) -> bool {
-        self.rooms.lock().await.get(room_id).is_some()
+    pub async fn check_exist_room(&self, room_id: Arc<str>) -> bool {
+        self.rooms.lock().await.get(&*room_id).is_some()
     }
 
-    pub async fn join_room(&self, room_id: String, user: User) -> Result<(), ServerAppError> {
+    pub async fn join_room(&self, room_id: Arc<str>, user: User) -> Result<(), ServerAppError> {
         log::info!("join_room room_id = {room_id}");
         let mut rooms_write = self.rooms.lock().await;
 
-        let room = rooms_write.get_mut(&room_id);
+        let room = rooms_write.get_mut(&*room_id);
 
         if let Some(room) = room {
             room.join_user(user).await;

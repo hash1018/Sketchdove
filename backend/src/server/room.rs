@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use lib::{
     figure::FigureData,
-    message::{RequestType, ResponseType, ServerMessage, UserId},
+    message::{RequestType, ResponseType, ServerMessage},
 };
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
@@ -14,21 +14,21 @@ use super::{user::User, ServerAppMessage};
 
 #[derive(Debug)]
 pub enum RoomMessage {
-    LeaveUser(UserId),
+    LeaveUser(Arc<str>),
     AddFigure(FigureData),
-    RequestInfo(UserId, RequestType),
+    RequestInfo(Arc<str>, RequestType),
 }
 
 pub struct Room {
-    id: String,
+    id: Arc<str>,
     server_app_sender: Sender<ServerAppMessage>,
-    users: Arc<Mutex<HashMap<String, User>>>,
+    users: Arc<Mutex<HashMap<Arc<str>, User>>>,
     figures: Arc<Mutex<Vec<FigureData>>>,
-    sender: Sender<RoomMessage>, //To pass to new_user so that room receiver can receive a message from user.
+    sender: Sender<RoomMessage>, //Pass to new_user so that room's receiver can receive a message from user.
 }
 
 impl Room {
-    pub fn new(id: String, server_app_sender: Sender<ServerAppMessage>) -> Self {
+    pub fn new(id: Arc<str>, server_app_sender: Sender<ServerAppMessage>) -> Self {
         let (sender, receiver) = mpsc::channel(1000);
 
         let room = Self {
@@ -94,11 +94,15 @@ impl Room {
             users_lock.insert(new_user.id(), new_user);
         }
 
-        broadcast(self.users.clone(), ServerMessage::UserJoined(new_user_id)).await;
+        broadcast(
+            self.users.clone(),
+            ServerMessage::UserJoined(new_user_id.to_string()),
+        )
+        .await;
     }
 }
 
-async fn broadcast(users: Arc<Mutex<HashMap<UserId, User>>>, message: ServerMessage) {
+async fn broadcast(users: Arc<Mutex<HashMap<Arc<str>, User>>>, message: ServerMessage) {
     let mut users_lock = users.lock().await;
 
     for (_, user) in users_lock.iter_mut() {
