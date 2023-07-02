@@ -93,9 +93,34 @@ impl Component for Workspace {
             }
             WorkSpaceMessage::HandleServerMessage(server_message) => {
                 log::debug!("received message from event_bus {server_message:?}");
-                if let ServerMessage::FigureAdded(data) = server_message {
-                    self.figures.push(data.into());
-                    return true;
+                match server_message {
+                    ServerMessage::FigureAdded(data) => {
+                        self.figures.push(data.into());
+                        return true;
+                    }
+                    ServerMessage::ResponseInfo(response_type) => match response_type {
+                        lib::message::ResponseType::CurrentFigures(datas) => {
+                            if datas.is_empty() {
+                                return false;
+                            }
+
+                            let mut vec = Vec::new();
+                            for data in datas {
+                                vec.push(data.into());
+                            }
+                            self.figures.append(vec);
+                            return true;
+                        }
+                    },
+                    ServerMessage::UserJoined(user_id) => {
+                        if user_id == user_name().unwrap() {
+                            if let Some(wss) = self.wss.as_ref() {
+                                wss.send(lib::message::ClientMessage::RequestInfo(
+                                    lib::message::RequestType::CurrentFigures,
+                                ));
+                            }
+                        }
+                    }
                 }
             }
             WorkSpaceMessage::HandleChildRequest(request) => match request {
@@ -204,6 +229,11 @@ impl FigureList {
 
     fn push(&self, figure: Box<dyn Figure>) {
         self.list.borrow_mut().push(figure);
+        *self.is_modified.borrow_mut() = true;
+    }
+
+    fn append(&self, mut figures: Vec<Box<dyn Figure>>) {
+        self.list.borrow_mut().append(&mut figures);
         *self.is_modified.borrow_mut() = true;
     }
 

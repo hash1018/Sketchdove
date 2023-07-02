@@ -14,7 +14,7 @@ use super::room::RoomMessage;
 pub struct User {
     id: String,
     room_sender: Arc<Mutex<Option<Sender<RoomMessage>>>>,
-    socket_sender: Option<SplitSink<WebSocket, Message>>,
+    socket_sender: SplitSink<WebSocket, Message>,
     socket_receiver: Option<SplitStream<WebSocket>>,
 }
 
@@ -33,46 +33,37 @@ impl User {
         Self {
             id,
             room_sender: Arc::new(Mutex::new(None)),
-            socket_sender: Some(sender),
+            socket_sender: sender,
             socket_receiver: Some(receiver),
         }
     }
 
-    pub async fn set_channel(
-        &mut self,
-        room_sender: Sender<RoomMessage>,
-        room_receiver: tokio::sync::broadcast::Receiver<ServerMessage>,
-    ) {
+    pub async fn set_channel(&mut self, room_sender: Sender<RoomMessage>) {
         let id = self.id.clone();
 
         *self.room_sender.lock().await = Some(room_sender.clone());
         let room_sender_clone = self.room_sender.clone();
 
-        let socket_sender = self.socket_sender.take().unwrap();
         let socket_receiver = self.socket_receiver.take().unwrap();
 
         tokio::spawn(async move {
-            handle_message(
-                id,
-                room_sender_clone,
-                room_receiver,
-                socket_sender,
-                socket_receiver,
-            )
-            .await;
+            handle_message(id, room_sender_clone, socket_receiver).await;
         });
     }
 
     pub fn id(&self) -> String {
         self.id.clone()
     }
+
+    pub async fn send_message(&mut self, message: ServerMessage) {
+        let message = serde_json::to_string(&message).unwrap();
+        let _ = self.socket_sender.send(Message::Text(message)).await;
+    }
 }
 
 async fn handle_message(
     id: String,
     room_sender: Arc<Mutex<Option<Sender<RoomMessage>>>>,
-    mut room_receiver: tokio::sync::broadcast::Receiver<ServerMessage>,
-    mut socket_sender: SplitSink<WebSocket, Message>,
     mut socket_receiver: SplitStream<WebSocket>,
 ) {
     let mut recv_task = tokio::spawn(async move {
@@ -89,6 +80,9 @@ async fn handle_message(
                         break;
                     }
                     ClientMessage::AddFigure(data) => RoomMessage::AddFigure(data),
+                    ClientMessage::RequestInfo(request_type) => {
+                        RoomMessage::RequestInfo(id.clone(), request_type)
+                    }
                     _ => {
                         continue;
                     }
@@ -110,15 +104,7 @@ async fn handle_message(
         }
     });
 
-    let mut send_task = tokio::spawn(async move {
-        while let Ok(message) = room_receiver.recv().await {
-            let message = serde_json::to_string(&message).unwrap();
-            let _ = socket_sender.send(Message::Text(message)).await;
-        }
-    });
-
     tokio::select! {
-        _ = (&mut recv_task) => send_task.abort(),
-        _ = (&mut send_task) => recv_task.abort(),
+        _ = (&mut recv_task) => {}
     };
 }

@@ -1,8 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
-use lib::{figure::FigureData, message::ServerMessage};
+use lib::{
+    figure::FigureData,
+    message::{RequestType, ResponseType, ServerMessage, UserId},
+};
 use tokio::sync::{
-    broadcast,
     mpsc::{self, Receiver, Sender},
     Mutex,
 };
@@ -12,8 +14,9 @@ use super::{user::User, ServerAppMessage};
 
 #[derive(Debug)]
 pub enum RoomMessage {
-    LeaveUser(String),
+    LeaveUser(UserId),
     AddFigure(FigureData),
+    RequestInfo(UserId, RequestType),
 }
 
 pub struct Room {
@@ -22,13 +25,11 @@ pub struct Room {
     users: Arc<Mutex<HashMap<String, User>>>,
     figures: Arc<Mutex<Vec<FigureData>>>,
     sender: Sender<RoomMessage>, //To pass to new_user so that room receiver can receive a message from user.
-    user_sender: tokio::sync::broadcast::Sender<ServerMessage>,
 }
 
 impl Room {
     pub fn new(id: String, server_app_sender: Sender<ServerAppMessage>) -> Self {
         let (sender, receiver) = mpsc::channel(1000);
-        let (user_sender, _) = broadcast::channel(1000);
 
         let room = Self {
             id,
@@ -36,7 +37,6 @@ impl Room {
             users: Arc::new(Mutex::new(HashMap::new())),
             figures: Arc::new(Mutex::new(Vec::new())),
             sender,
-            user_sender,
         };
 
         room.run(receiver);
@@ -49,7 +49,6 @@ impl Room {
         let server_app_sender_clone = self.server_app_sender.clone();
         let figures_clone = self.figures.clone();
         let room_id = self.id.clone();
-        let user_sender = self.user_sender.clone();
         tokio::spawn(async move {
             while let Some(message) = receiver.recv().await {
                 match message {
@@ -66,26 +65,43 @@ impl Room {
                         }
                     }
                     RoomMessage::AddFigure(data) => {
-                        log::info!("Add Figure {data:?}");
                         figures_clone.lock().await.push(data.clone());
-                        let _ = user_sender.send(ServerMessage::FigureAdded(data));
+                        broadcast(users_clone.clone(), ServerMessage::FigureAdded(data)).await;
                     }
+                    RoomMessage::RequestInfo(user_id, request_type) => match request_type {
+                        RequestType::CurrentFigures => {
+                            let mut users_lock = users_clone.lock().await;
+                            let vec = figures_clone.lock().await.clone();
+                            if let Some(user) = users_lock.get_mut(&user_id) {
+                                user.send_message(ServerMessage::ResponseInfo(
+                                    ResponseType::CurrentFigures(vec),
+                                ))
+                                .await;
+                            }
+                        }
+                    },
                 }
             }
         });
     }
 
     pub async fn join_user(&self, mut new_user: User) {
-        let _ = self
-            .user_sender
-            .send(ServerMessage::UserJoined(new_user.id()));
+        let new_user_id = new_user.id();
+        new_user.set_channel(self.sender.clone()).await;
 
-        let receiver = self.user_sender.subscribe();
-        new_user.set_channel(self.sender.clone(), receiver).await;
+        {
+            let mut users_lock = self.users.lock().await;
+            users_lock.insert(new_user.id(), new_user);
+        }
 
-        let mut users_lock = self.users.lock().await;
-        users_lock.insert(new_user.id(), new_user);
+        broadcast(self.users.clone(), ServerMessage::UserJoined(new_user_id)).await;
+    }
+}
 
-        log::info!("now users = {0:?}", *users_lock);
+async fn broadcast(users: Arc<Mutex<HashMap<UserId, User>>>, message: ServerMessage) {
+    let mut users_lock = users.lock().await;
+
+    for (_, user) in users_lock.iter_mut() {
+        user.send_message(message.clone()).await;
     }
 }

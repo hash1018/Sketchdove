@@ -86,6 +86,7 @@ impl Component for DrawArea {
 
         if ctx.props().figures.is_modified() {
             ctx.props().figures.reset_modified();
+            self.draw_option = DrawOption::DrawAll;
             return true;
         }
 
