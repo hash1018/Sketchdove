@@ -31,9 +31,9 @@ async fn websocket(stream: WebSocket, server_app: Arc<ServerApp>) {
             let message: ClientMessage = serde_json::from_str(&message).unwrap();
             match message {
                 ClientMessage::Join(room_id_inner, user_id_inner) => {
-                    let room_id_inner: Arc<str> = Arc::from(room_id_inner);
                     let user_id_inner: Arc<str> = Arc::from(user_id_inner);
-                    if !server_app.check_exist_room(room_id_inner.clone()).await {
+                    if !server_app.check_exist_room(&room_id_inner).await {
+                        let room_id_inner: Arc<str> = Arc::from(room_id_inner);
                         if server_app.make_room(room_id_inner.clone()).await.is_ok() {
                             room_id = Some(room_id_inner);
                             user_id = Some(user_id_inner);
@@ -43,7 +43,7 @@ async fn websocket(stream: WebSocket, server_app: Arc<ServerApp>) {
                         }
                     } else {
                         log::info!("already exist");
-                        room_id = Some(room_id_inner);
+                        room_id = Some(Arc::from(room_id_inner));
                         user_id = Some(user_id_inner);
                         break;
                     }

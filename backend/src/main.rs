@@ -1,8 +1,10 @@
 use axum::body::{boxed, Body};
 use axum::http::{Request, StatusCode};
 use axum::response::Response;
+use axum::routing::post;
 use axum::{routing::get, Router};
 use clap::Parser;
+use handler::api::check_room_exist_handler;
 use handler::websocket::websocket_handler;
 use lib::{IP_ADDRESS, PORT};
 use std::net::{IpAddr, SocketAddr};
@@ -102,6 +104,7 @@ fn using_serve_dir(opt: Opt, server_app: Arc<ServerApp>) -> Router {
 
     Router::new()
         .route("/websocket", get(websocket_handler))
+        .route("/api/check_room_exist", post(check_room_exist_handler))
         .with_state(server_app)
         .fallback_service(get(closure))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))

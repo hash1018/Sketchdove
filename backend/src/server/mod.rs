@@ -66,8 +66,8 @@ impl ServerApp {
         Ok(())
     }
 
-    pub async fn check_exist_room(&self, room_id: Arc<str>) -> bool {
-        self.rooms.lock().await.get(&*room_id).is_some()
+    pub async fn check_exist_room(&self, room_id: &str) -> bool {
+        self.rooms.lock().await.get(room_id).is_some()
     }
 
     pub async fn join_room(&self, room_id: Arc<str>, user: User) -> Result<(), ServerAppError> {

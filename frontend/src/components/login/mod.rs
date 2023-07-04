@@ -1,7 +1,11 @@
+use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlInputElement;
 use yew::{html, Component, Properties};
 use yew::{Callback, NodeRef};
 
+use crate::components::login::api::api_check_room_exist;
+
+mod api;
 pub enum LoginMessage {
     JoinButtonClicked,
     CreateRoomButtonClicked,
@@ -62,9 +66,19 @@ impl Component for Login {
                     .emit(LoginNotifyMessage::EnterRoom(user_name, room_id));
             }
             LoginMessage::CreateRoomButtonClicked => {
-                ctx.props()
-                    .handler
-                    .emit(LoginNotifyMessage::EnterRoom(user_name, room_id));
+                let handler = ctx.props().handler.clone();
+                let room_id = room_id.unwrap();
+                spawn_local(async move {
+                    if let Ok(result) = api_check_room_exist(&room_id).await {
+                        if !result {
+                            handler.emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
+                        } else {
+                            log::info!("room_id {room_id:?} already exist");
+                        }
+                    } else {
+                        log::info!("fail");
+                    }
+                });
             }
         }
         true
