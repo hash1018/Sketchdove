@@ -75,6 +75,7 @@ impl Component for Workspace {
         }
     }
 
+    #[allow(clippy::single_match)]
     fn update(&mut self, ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
         match msg {
             WorkSpaceMessage::RequestInit => {
@@ -111,6 +112,7 @@ impl Component for Workspace {
                             self.figures.append(vec);
                             return true;
                         }
+                        _ => {}
                     },
                     ServerMessage::UserJoined(user_id) => {
                         if user_id == user_name().unwrap() {
@@ -165,7 +167,7 @@ impl Component for Workspace {
                 .callback(WorkSpaceMessage::HandleLoginNotifyMessage);
             html! {
                <div>
-                   <Login {handler} hide_create_button = {true} />
+                   <Login {handler} room_id = {Some(ctx.props().id.clone())} />
                </div>
             }
         }

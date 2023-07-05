@@ -20,11 +20,16 @@ pub enum ClientMessage {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum RequestType {
     CurrentFigures,
+    CheckRoomExist(RoomId),
+    CheckUserExist(RoomId, UserId),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResponseType {
     CurrentFigures(Vec<FigureData>),
+    ResponseRoomExist(bool),
+    ResponseUserExist(Option<bool>),
+    InvalidRequest(RequestType),
 }
 
 pub type RoomId = String;

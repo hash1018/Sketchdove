@@ -3,7 +3,7 @@ use web_sys::HtmlInputElement;
 use yew::{html, Component, Properties};
 use yew::{Callback, NodeRef};
 
-use crate::components::login::api::api_check_room_exist;
+use crate::components::login::api::{api_check_room_exist, api_check_user_exist};
 
 mod api;
 pub enum LoginMessage {
@@ -17,8 +17,8 @@ pub enum LoginNotifyMessage {
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct LoginProps {
-    pub hide_create_button: bool,
     pub handler: Callback<LoginNotifyMessage>,
+    pub room_id: Option<String>,
 }
 
 pub struct Login {
@@ -38,50 +38,11 @@ impl Component for Login {
     }
 
     fn update(&mut self, ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
-        let user_name = self
-            .user_name_ref
-            .cast::<HtmlInputElement>()
-            .unwrap()
-            .value();
-
-        let room_id = self
-            .room_id_ref
-            .cast::<HtmlInputElement>()
-            .map(|room_id| room_id.value());
-
-        log::info!("user_name {user_name}, room_id {room_id:?}");
-
-        if let Some(room_id) = room_id.as_ref() {
-            if user_name.is_empty() || room_id.is_empty() {
-                return false;
-            }
-        } else if user_name.is_empty() {
-            return false;
+        if ctx.props().room_id.is_some() {
+            update_by_workspace(self, ctx, msg)
+        } else {
+            update_by_main(self, ctx, msg)
         }
-
-        match msg {
-            LoginMessage::JoinButtonClicked => {
-                ctx.props()
-                    .handler
-                    .emit(LoginNotifyMessage::EnterRoom(user_name, room_id));
-            }
-            LoginMessage::CreateRoomButtonClicked => {
-                let handler = ctx.props().handler.clone();
-                let room_id = room_id.unwrap();
-                spawn_local(async move {
-                    if let Ok(result) = api_check_room_exist(&room_id).await {
-                        if !result {
-                            handler.emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
-                        } else {
-                            log::info!("room_id {room_id:?} already exist");
-                        }
-                    } else {
-                        log::info!("fail");
-                    }
-                });
-            }
-        }
-        true
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
@@ -90,7 +51,7 @@ impl Component for Login {
             .link()
             .callback(|_| LoginMessage::CreateRoomButtonClicked);
 
-        let hide_create_button = ctx.props().hide_create_button;
+        let hide_create_button = ctx.props().room_id.is_some();
 
         html! {
            <div>
@@ -106,4 +67,118 @@ impl Component for Login {
            </div>
         }
     }
+}
+
+fn update_by_workspace(
+    login: &mut Login,
+    ctx: &yew::Context<Login>,
+    msg: <Login as Component>::Message,
+) -> bool {
+    let user_name = login
+        .user_name_ref
+        .cast::<HtmlInputElement>()
+        .unwrap()
+        .value();
+
+    let room_id = ctx.props().room_id.as_ref().unwrap().clone();
+
+    if user_name.is_empty() {
+        return false;
+    }
+
+    if let LoginMessage::JoinButtonClicked = msg {
+        let handler = ctx.props().handler.clone();
+        spawn_local(async move {
+            if let Ok(result) = api_check_room_exist(&room_id).await {
+                if result {
+                    if let Ok(result) = api_check_user_exist(&user_name, &room_id).await {
+                        if !result {
+                            handler.emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
+                        } else {
+                            log::info!("user_id {user_name} already exist");
+                        }
+                    }
+                } else {
+                    log::info!("room_id {room_id:?} does not exist");
+                }
+            } else {
+                log::info!("fail");
+            }
+        });
+    }
+
+    false
+}
+
+fn update_by_main(
+    login: &mut Login,
+    ctx: &yew::Context<Login>,
+    msg: <Login as Component>::Message,
+) -> bool {
+    let user_name = login
+        .user_name_ref
+        .cast::<HtmlInputElement>()
+        .unwrap()
+        .value();
+
+    let room_id = login
+        .room_id_ref
+        .cast::<HtmlInputElement>()
+        .map(|room_id| room_id.value());
+
+    log::info!("user_name {user_name}, room_id {room_id:?}");
+
+    if let Some(room_id) = room_id.as_ref() {
+        if user_name.is_empty() || room_id.is_empty() {
+            return false;
+        }
+    } else if user_name.is_empty() {
+        return false;
+    }
+
+    match msg {
+        LoginMessage::JoinButtonClicked => {
+            let handler = ctx.props().handler.clone();
+            let room_id = room_id.unwrap();
+            spawn_local(async move {
+                if let Ok(result) = api_check_room_exist(&room_id).await {
+                    if result {
+                        log::info!("room_id {room_id} already exist");
+                        if let Ok(result) = api_check_user_exist(&user_name, &room_id).await {
+                            if !result {
+                                log::info!("user_id {user_name} does not exist");
+                                handler
+                                    .emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
+                            } else {
+                                log::info!("user_id {user_name} already exist");
+                            }
+                        } else {
+                            log::info!("user_id {user_name} error");
+                        }
+                    } else {
+                        log::info!("room_id {room_id:?} does not exist");
+                    }
+                } else {
+                    log::info!("fail");
+                }
+            });
+        }
+        LoginMessage::CreateRoomButtonClicked => {
+            let handler = ctx.props().handler.clone();
+            let room_id = room_id.unwrap();
+            spawn_local(async move {
+                if let Ok(result) = api_check_room_exist(&room_id).await {
+                    if !result {
+                        handler.emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
+                    } else {
+                        log::info!("room_id {room_id:?} already exist");
+                    }
+                } else {
+                    log::info!("fail");
+                }
+            });
+        }
+    }
+
+    false
 }

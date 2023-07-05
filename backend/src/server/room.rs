@@ -44,6 +44,7 @@ impl Room {
         room
     }
 
+    #[allow(clippy::single_match)]
     fn run(&self, mut receiver: Receiver<RoomMessage>) {
         let users_clone = self.users.clone();
         let server_app_sender_clone = self.server_app_sender.clone();
@@ -79,6 +80,7 @@ impl Room {
                                 .await;
                             }
                         }
+                        _ => {}
                     },
                 }
             }
@@ -99,6 +101,10 @@ impl Room {
             ServerMessage::UserJoined(new_user_id.to_string()),
         )
         .await;
+    }
+
+    pub async fn check_exist_user(&self, user_id: &str) -> bool {
+        self.users.lock().await.get(user_id).is_some()
     }
 }
 

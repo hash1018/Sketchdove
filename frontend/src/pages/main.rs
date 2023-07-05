@@ -39,7 +39,7 @@ impl Component for Main {
         let handler = ctx.link().callback(MainMessage::HandleLoginNotifyMessage);
         html! {
            <div>
-               <Login {handler} hide_create_button = {false} />
+               <Login {handler} room_id = {None::<String>} />
            </div>
         }
     }
