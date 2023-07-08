@@ -35,12 +35,10 @@ impl Worker for EventBus {
     }
 
     fn connected(&mut self, id: HandlerId) {
-        log::debug!("connected");
         self.subscribers.insert(id);
     }
 
     fn disconnected(&mut self, id: HandlerId) {
-        log::debug!("disconnected");
         self.subscribers.remove(&id);
     }
 

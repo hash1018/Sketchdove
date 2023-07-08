@@ -17,7 +17,7 @@ pub async fn websocket_handler(
     ws: WebSocketUpgrade,
     State(server_app): State<Arc<ServerApp>>,
 ) -> impl IntoResponse {
-    log::info!("connected");
+    log::info!("websocket connected");
     ws.on_upgrade(|socket| websocket(socket, server_app))
 }
 
@@ -42,7 +42,6 @@ async fn websocket(stream: WebSocket, server_app: Arc<ServerApp>) {
                             return;
                         }
                     } else {
-                        log::info!("already exist");
                         room_id = Some(Arc::from(room_id_inner));
                         user_id = Some(user_id_inner);
                         break;

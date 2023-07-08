@@ -83,6 +83,10 @@ fn update_by_workspace(
     let room_id = ctx.props().room_id.as_ref().unwrap().clone();
 
     if user_name.is_empty() {
+        web_sys::window()
+            .unwrap()
+            .alert_with_message("Input!")
+            .unwrap();
         return false;
     }
 
@@ -95,14 +99,17 @@ fn update_by_workspace(
                         if !result {
                             handler.emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
                         } else {
-                            log::info!("user_id {user_name} already exist");
+                            let str = format!("user_id {user_name} already exist");
+                            web_sys::window().unwrap().alert_with_message(&str).unwrap();
                         }
                     }
                 } else {
-                    log::info!("room_id {room_id:?} does not exist");
+                    let str = format!("room_id {room_id:?} doesn't exist");
+                    web_sys::window().unwrap().alert_with_message(&str).unwrap();
                 }
             } else {
-                log::info!("fail");
+                let str = "error occurs try again".to_string();
+                web_sys::window().unwrap().alert_with_message(&str).unwrap();
             }
         });
     }
@@ -126,13 +133,19 @@ fn update_by_main(
         .cast::<HtmlInputElement>()
         .map(|room_id| room_id.value());
 
-    log::info!("user_name {user_name}, room_id {room_id:?}");
-
     if let Some(room_id) = room_id.as_ref() {
         if user_name.is_empty() || room_id.is_empty() {
+            web_sys::window()
+                .unwrap()
+                .alert_with_message("Input!")
+                .unwrap();
             return false;
         }
     } else if user_name.is_empty() {
+        web_sys::window()
+            .unwrap()
+            .alert_with_message("Input!")
+            .unwrap();
         return false;
     }
 
@@ -143,23 +156,25 @@ fn update_by_main(
             spawn_local(async move {
                 if let Ok(result) = api_check_room_exist(&room_id).await {
                     if result {
-                        log::info!("room_id {room_id} already exist");
                         if let Ok(result) = api_check_user_exist(&user_name, &room_id).await {
                             if !result {
-                                log::info!("user_id {user_name} does not exist");
                                 handler
                                     .emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
                             } else {
-                                log::info!("user_id {user_name} already exist");
+                                let str = format!("user_name {user_name} already exist");
+                                web_sys::window().unwrap().alert_with_message(&str).unwrap();
                             }
                         } else {
-                            log::info!("user_id {user_name} error");
+                            let str = format!("cannot join, user_name {user_name}, error occurs");
+                            web_sys::window().unwrap().alert_with_message(&str).unwrap();
                         }
                     } else {
-                        log::info!("room_id {room_id:?} does not exist");
+                        let str = format!("room_id {room_id} doesn't exist");
+                        web_sys::window().unwrap().alert_with_message(&str).unwrap();
                     }
                 } else {
-                    log::info!("fail");
+                    let str = "error occurs try again".to_string();
+                    web_sys::window().unwrap().alert_with_message(&str).unwrap();
                 }
             });
         }
@@ -171,10 +186,12 @@ fn update_by_main(
                     if !result {
                         handler.emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
                     } else {
-                        log::info!("room_id {room_id:?} already exist");
+                        let str = format!("room_id {room_id} already exist");
+                        web_sys::window().unwrap().alert_with_message(&str).unwrap();
                     }
                 } else {
-                    log::info!("fail");
+                    let str = "error occurs try again".to_string();
+                    web_sys::window().unwrap().alert_with_message(&str).unwrap();
                 }
             });
         }

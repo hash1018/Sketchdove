@@ -81,7 +81,6 @@ impl Component for Workspace {
             WorkSpaceMessage::RequestInit => {
                 let user_name = user_name().unwrap();
                 let room_id = ctx.props().id.clone();
-                log::info!("connect websocket user_name {user_name}, room_id {room_id}");
 
                 (self.wss, self._event_bus) = init(ctx);
                 self.logined = true;
@@ -92,39 +91,36 @@ impl Component for Workspace {
 
                 return true;
             }
-            WorkSpaceMessage::HandleServerMessage(server_message) => {
-                log::debug!("received message from event_bus {server_message:?}");
-                match server_message {
-                    ServerMessage::FigureAdded(data) => {
-                        self.figures.push(data.into());
+            WorkSpaceMessage::HandleServerMessage(server_message) => match server_message {
+                ServerMessage::FigureAdded(data) => {
+                    self.figures.push(data.into());
+                    return true;
+                }
+                ServerMessage::ResponseInfo(response_type) => match response_type {
+                    lib::message::ResponseType::CurrentFigures(datas) => {
+                        if datas.is_empty() {
+                            return false;
+                        }
+
+                        let mut vec = Vec::new();
+                        for data in datas {
+                            vec.push(data.into());
+                        }
+                        self.figures.append(vec);
                         return true;
                     }
-                    ServerMessage::ResponseInfo(response_type) => match response_type {
-                        lib::message::ResponseType::CurrentFigures(datas) => {
-                            if datas.is_empty() {
-                                return false;
-                            }
-
-                            let mut vec = Vec::new();
-                            for data in datas {
-                                vec.push(data.into());
-                            }
-                            self.figures.append(vec);
-                            return true;
-                        }
-                        _ => {}
-                    },
-                    ServerMessage::UserJoined(user_id) => {
-                        if user_id == user_name().unwrap() {
-                            if let Some(wss) = self.wss.as_ref() {
-                                wss.send(lib::message::ClientMessage::RequestInfo(
-                                    lib::message::RequestType::CurrentFigures,
-                                ));
-                            }
+                    _ => {}
+                },
+                ServerMessage::UserJoined(user_id) => {
+                    if user_id == user_name().unwrap() {
+                        if let Some(wss) = self.wss.as_ref() {
+                            wss.send(lib::message::ClientMessage::RequestInfo(
+                                lib::message::RequestType::CurrentFigures,
+                            ));
                         }
                     }
                 }
-            }
+            },
             WorkSpaceMessage::HandleChildRequest(request) => match request {
                 ChildRequestType::Leave => {
                     let navigator = ctx.link().navigator().unwrap();

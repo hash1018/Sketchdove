@@ -55,7 +55,7 @@ impl ServerApp {
     }
 
     pub async fn make_room(&self, room_id: Arc<str>) -> Result<(), ServerAppError> {
-        log::info!("make room room_id = {room_id}");
+        log::info!("Make room room_id = {room_id}");
         let mut rooms_write = self.rooms.lock().await;
         if rooms_write.get(&*room_id).is_some() {
             return Err(ServerAppError::RoomAlreadyExist(room_id));
@@ -85,7 +85,7 @@ impl ServerApp {
     }
 
     pub async fn join_room(&self, room_id: Arc<str>, user: User) -> Result<(), ServerAppError> {
-        log::info!("join_room room_id = {room_id}");
+        log::info!("Join room room_id = {room_id}");
         let mut rooms_write = self.rooms.lock().await;
 
         let room = rooms_write.get_mut(&*room_id);
