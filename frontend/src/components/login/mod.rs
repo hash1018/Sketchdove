@@ -104,8 +104,7 @@ fn update_by_workspace(
                         }
                     }
                 } else {
-                    let str = format!("room_id {room_id:?} doesn't exist");
-                    web_sys::window().unwrap().alert_with_message(&str).unwrap();
+                    handler.emit(LoginNotifyMessage::EnterRoom(user_name, Some(room_id)));
                 }
             } else {
                 let str = "error occurs try again".to_string();
