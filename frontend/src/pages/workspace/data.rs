@@ -48,6 +48,7 @@ impl FigureList {
 #[derive(Clone)]
 pub enum SharedUsersModifiedReason {
     UserJoined,
+    UserLeft,
 }
 
 #[derive(Default)]
@@ -73,8 +74,37 @@ impl SharedUsers {
     }
 
     pub fn push(&self, user: SharedUser) {
+        let is_you = user.is_you;
+
         self.list.borrow_mut().push(user);
+
+        if !is_you {
+            *self.is_modified.borrow_mut() = true;
+            *self.modified_reason.borrow_mut() = Some(SharedUsersModifiedReason::UserJoined);
+        }
+    }
+
+    pub fn append(&self, mut users: Vec<SharedUser>) {
+        self.list.borrow_mut().append(&mut users);
         *self.is_modified.borrow_mut() = true;
+        *self.modified_reason.borrow_mut() = Some(SharedUsersModifiedReason::UserJoined);
+    }
+
+    pub fn remove(&self, user_id: String) {
+        let position = self
+            .list
+            .borrow()
+            .iter()
+            .position(|user| user.user_id == user_id);
+        if let Some(position) = position {
+            self.list.borrow_mut().remove(position);
+            *self.is_modified.borrow_mut() = true;
+            *self.modified_reason.borrow_mut() = Some(SharedUsersModifiedReason::UserLeft);
+
+            let str = format!("user left! current users {0:?}", *self.list.borrow());
+
+            log::info!("{str}");
+        }
     }
 
     pub fn list(&self) -> Rc<RefCell<Vec<SharedUser>>> {
@@ -92,16 +122,21 @@ impl SharedUsers {
     pub fn reset_modified(&self) {
         *self.is_modified.borrow_mut() = false;
     }
+
+    pub fn reset_modified_reason(&self) {
+        *self.modified_reason.borrow_mut() = None;
+    }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SharedUser {
     user_id: String,
+    is_you: bool,
 }
 
 impl SharedUser {
-    pub fn new(user_id: String) -> Self {
-        Self { user_id }
+    pub fn new(user_id: String, is_you: bool) -> Self {
+        Self { user_id, is_you }
     }
 
     pub fn user_id(&self) -> &str {

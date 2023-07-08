@@ -74,24 +74,26 @@ impl Component for DrawArea {
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         let new_mode = ctx.props().current_mode;
         let old_mode = old_props.current_mode;
+
+        let mut should_render = false;
         if new_mode != old_mode {
             self.current_mode = new_mode.into();
-            //NOTE: Just in case where current Mode changes when drawing something.
+            //NOTE: Just in case where current Mode changes when drawing is in progress.
             if self.data.take_preview().is_some() {
                 self.draw_option = DrawOption::DrawAll;
             } else {
                 self.draw_option = DrawOption::Remain;
             }
-            return true;
+            should_render = true;
         }
 
         if ctx.props().figures.is_modified() {
             ctx.props().figures.reset_modified();
             self.draw_option = DrawOption::DrawAll;
-            return true;
+            should_render = true;
         }
 
-        false
+        should_render
     }
 
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {

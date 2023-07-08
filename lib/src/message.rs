@@ -7,11 +7,12 @@ pub enum ServerMessage {
     UserJoined(UserId),
     FigureAdded(FigureData),
     ResponseInfo(ResponseType),
+    UserLeft(UserId),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ClientMessage {
-    Disconnect,
+    Leave,
     Join(RoomId, UserId),
     AddFigure(FigureData),
     RequestInfo(RequestType),
@@ -22,11 +23,13 @@ pub enum RequestType {
     CurrentFigures,
     CheckRoomExist(RoomId),
     CheckUserExist(RoomId, UserId),
+    CurrentSharedUsers,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResponseType {
     CurrentFigures(Vec<FigureData>),
+    CurrentSharedUsers(Vec<String>),
     ResponseRoomExist(bool),
     ResponseUserExist(Option<bool>),
     InvalidRequest(RequestType),

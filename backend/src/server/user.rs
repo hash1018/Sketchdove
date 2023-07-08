@@ -71,7 +71,7 @@ async fn handle_message(
             if let Message::Text(message) = message {
                 let message: ClientMessage = serde_json::from_str(&message).unwrap();
                 let room_message = match message {
-                    ClientMessage::Disconnect => {
+                    ClientMessage::Leave => {
                         let sender_lock = room_sender.lock().await;
                         if let Some(sender) = &*sender_lock {
                             sender.send(RoomMessage::LeaveUser(id)).await.unwrap();

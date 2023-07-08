@@ -75,7 +75,7 @@ impl WebsocketService {
 
     pub fn disconnect(&self) {
         let mut sender = self.tx.borrow_mut().take().unwrap();
-        let _ = sender.try_send(ClientMessage::Disconnect);
+        let _ = sender.try_send(ClientMessage::Leave);
     }
 
     pub fn send(&self, message: ClientMessage) -> bool {

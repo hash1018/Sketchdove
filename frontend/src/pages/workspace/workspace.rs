@@ -108,6 +108,26 @@ impl Component for Workspace {
                         self.figures.append(vec);
                         return true;
                     }
+                    lib::message::ResponseType::CurrentSharedUsers(mut users) => {
+                        let my_name = user_name().unwrap();
+                        if let Some(position) = users.iter().position(|name| *name == my_name) {
+                            users.remove(position);
+                            let me = SharedUser::new(my_name, true);
+                            self.shared_users.push(me);
+
+                            if users.is_empty() {
+                                return false;
+                            }
+
+                            let mut vec = Vec::new();
+                            for user in users {
+                                vec.push(SharedUser::new(user, false));
+                            }
+
+                            self.shared_users.append(vec);
+                            return true;
+                        }
+                    }
                     _ => {}
                 },
                 ServerMessage::UserJoined(user_id) => {
@@ -116,12 +136,20 @@ impl Component for Workspace {
                             wss.send(lib::message::ClientMessage::RequestInfo(
                                 lib::message::RequestType::CurrentFigures,
                             ));
+
+                            wss.send(lib::message::ClientMessage::RequestInfo(
+                                lib::message::RequestType::CurrentSharedUsers,
+                            ));
                         }
                     } else {
-                        let new_user = SharedUser::new(user_id);
+                        let new_user = SharedUser::new(user_id, false);
                         self.shared_users.push(new_user);
                         return true;
                     }
+                }
+                ServerMessage::UserLeft(user_id) => {
+                    self.shared_users.remove(user_id);
+                    return true;
                 }
             },
             WorkSpaceMessage::HandleChildRequest(request) => match request {

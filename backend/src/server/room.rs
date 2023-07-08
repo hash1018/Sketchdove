@@ -6,7 +6,7 @@ use lib::{
 };
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
-    Mutex,
+    Mutex, MutexGuard,
 };
 use tracing::log;
 
@@ -63,11 +63,18 @@ impl Room {
                                 .send(ServerAppMessage::DeleteRoom(room_id.clone()))
                                 .await;
                             break;
+                        } else {
+                            broadcast(
+                                &mut users_lock,
+                                ServerMessage::UserLeft(user_id.to_string()),
+                            )
+                            .await;
                         }
                     }
                     RoomMessage::AddFigure(data) => {
                         figures_clone.lock().await.push(data.clone());
-                        broadcast(users_clone.clone(), ServerMessage::FigureAdded(data)).await;
+                        let mut users_lock = users_clone.lock().await;
+                        broadcast(&mut users_lock, ServerMessage::FigureAdded(data)).await;
                     }
                     RoomMessage::RequestInfo(user_id, request_type) => match request_type {
                         RequestType::CurrentFigures => {
@@ -76,6 +83,19 @@ impl Room {
                             if let Some(user) = users_lock.get_mut(&user_id) {
                                 user.send_message(ServerMessage::ResponseInfo(
                                     ResponseType::CurrentFigures(vec),
+                                ))
+                                .await;
+                            }
+                        }
+                        RequestType::CurrentSharedUsers => {
+                            let mut users_lock = users_clone.lock().await;
+                            let mut vec = Vec::new();
+                            for (user_id, _) in users_lock.iter() {
+                                vec.push(user_id.to_string());
+                            }
+                            if let Some(user) = users_lock.get_mut(&user_id) {
+                                user.send_message(ServerMessage::ResponseInfo(
+                                    ResponseType::CurrentSharedUsers(vec),
                                 ))
                                 .await;
                             }
@@ -91,13 +111,11 @@ impl Room {
         let new_user_id = new_user.id();
         new_user.set_channel(self.sender.clone()).await;
 
-        {
-            let mut users_lock = self.users.lock().await;
-            users_lock.insert(new_user.id(), new_user);
-        }
+        let mut users_lock = self.users.lock().await;
+        users_lock.insert(new_user.id(), new_user);
 
         broadcast(
-            self.users.clone(),
+            &mut users_lock,
             ServerMessage::UserJoined(new_user_id.to_string()),
         )
         .await;
@@ -108,9 +126,10 @@ impl Room {
     }
 }
 
-async fn broadcast(users: Arc<Mutex<HashMap<Arc<str>, User>>>, message: ServerMessage) {
-    let mut users_lock = users.lock().await;
-
+async fn broadcast(
+    users_lock: &mut MutexGuard<'_, HashMap<Arc<str>, User>>,
+    message: ServerMessage,
+) {
     for (_, user) in users_lock.iter_mut() {
         user.send_message(message.clone()).await;
     }
