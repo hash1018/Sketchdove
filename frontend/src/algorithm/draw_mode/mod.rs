@@ -2,7 +2,7 @@ use web_sys::MouseEvent;
 
 use crate::{
     base::{DrawModeType, ShouldAction},
-    components::draw_area::data::DrawAreaData,
+    pages::workspace::draw_area::data::DrawAreaData,
 };
 
 use self::{line_mode::LineMode, select_mode::SelectMode};

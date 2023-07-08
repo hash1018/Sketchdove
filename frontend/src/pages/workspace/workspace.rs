@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use lib::{figure::Figure, message::ServerMessage};
 use yew::{html, Component, Context, Properties};
@@ -8,17 +8,14 @@ use yew_router::scope_ext::RouterScopeExt;
 use crate::{
     base::DrawModeType,
     client::{event_bus::EventBus, websocket_service::WebsocketService},
-    components::{
-        chat::Chat,
-        draw_area::DrawArea,
-        login::{Login, LoginNotifyMessage},
-        title_bar::TitleBar,
-        tool_box::ToolBox,
+    components::login::{Login, LoginNotifyMessage},
+    pages::{
+        app::{set_user_name, user_name, Route},
+        workspace::{chat::Chat, draw_area::DrawArea, title_bar::TitleBar, tool_box::ToolBox},
     },
-    pages::app::user_name,
 };
 
-use super::app::{set_user_name, Route};
+use super::data::{FigureList, SharedUser, SharedUsers};
 
 pub enum WorkSpaceMessage {
     HandleServerMessage(ServerMessage),
@@ -45,6 +42,7 @@ pub struct Workspace {
     show_chat: bool,
     current_mode: DrawModeType,
     figures: Rc<FigureList>,
+    shared_users: Rc<SharedUsers>,
     logined: bool,
 }
 
@@ -65,6 +63,7 @@ impl Component for Workspace {
             show_chat: false,
             current_mode: DrawModeType::SelectMode,
             figures: Rc::new(FigureList::new()),
+            shared_users: Rc::new(SharedUsers::new()),
             logined: false,
         }
     }
@@ -118,6 +117,10 @@ impl Component for Workspace {
                                 lib::message::RequestType::CurrentFigures,
                             ));
                         }
+                    } else {
+                        let new_user = SharedUser::new(user_id);
+                        self.shared_users.push(new_user);
+                        return true;
                     }
                 }
             },
@@ -203,47 +206,4 @@ fn init(ctx: &Context<Workspace>) -> (Option<WebsocketService>, Option<Box<dyn B
     };
 
     (Some(wss), Some(EventBus::bridge(Rc::new(callback))))
-}
-
-#[derive(Default)]
-pub struct FigureList {
-    list: Rc<RefCell<Vec<Box<dyn Figure>>>>,
-    is_modified: Rc<RefCell<bool>>,
-}
-
-impl PartialEq for FigureList {
-    fn eq(&self, other: &Self) -> bool {
-        self.list.borrow().len() == other.list.borrow().len()
-    }
-}
-
-impl FigureList {
-    fn new() -> FigureList {
-        FigureList {
-            list: Rc::new(RefCell::new(Vec::new())),
-            is_modified: Rc::new(RefCell::new(false)),
-        }
-    }
-
-    fn push(&self, figure: Box<dyn Figure>) {
-        self.list.borrow_mut().push(figure);
-        *self.is_modified.borrow_mut() = true;
-    }
-
-    fn append(&self, mut figures: Vec<Box<dyn Figure>>) {
-        self.list.borrow_mut().append(&mut figures);
-        *self.is_modified.borrow_mut() = true;
-    }
-
-    pub fn list(&self) -> Rc<RefCell<Vec<Box<dyn Figure>>>> {
-        self.list.clone()
-    }
-
-    pub fn is_modified(&self) -> bool {
-        *self.is_modified.borrow()
-    }
-
-    pub fn reset_modified(&self) {
-        *self.is_modified.borrow_mut() = false;
-    }
 }

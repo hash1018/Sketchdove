@@ -1,6 +1,6 @@
 use lib::figure::{leaf::line::Line, Color, Figure};
 
-use crate::{base::DrawOption, components::draw_area::data::DrawAreaData};
+use crate::{base::DrawOption, pages::workspace::draw_area::data::DrawAreaData};
 
 use super::{DrawMode, ShouldAction};
 

@@ -4,7 +4,7 @@ use web_sys::AddEventListenerOptions;
 use yew::{html, Component, Html};
 use yew_router::{BrowserRouter, Routable, Switch};
 
-use crate::pages::{main::Main, workspace::Workspace};
+use crate::pages::{main::Main, workspace::workspace::Workspace};
 use once_cell::sync::Lazy;
 
 #[derive(Clone, Routable, PartialEq)]

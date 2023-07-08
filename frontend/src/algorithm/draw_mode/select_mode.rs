@@ -1,4 +1,4 @@
-use crate::components::draw_area::data::DrawAreaData;
+use crate::pages::workspace::draw_area::data::DrawAreaData;
 
 use super::{DrawMode, ShouldAction};
 

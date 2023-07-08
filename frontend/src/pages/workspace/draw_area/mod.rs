@@ -15,10 +15,11 @@ use crate::{
         visitor::drawer::{Drawer, DrawerGL},
     },
     base::{DrawModeType, DrawOption, ShouldAction},
-    pages::workspace::{ChildRequestType, FigureList},
 };
 
 use self::data::{DrawAreaData, WebGLData};
+
+use super::{data::FigureList, workspace::ChildRequestType};
 
 pub mod data;
 

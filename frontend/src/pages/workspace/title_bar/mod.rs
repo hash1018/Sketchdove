@@ -1,6 +1,6 @@
 use yew::{html, Callback, Component, Properties};
 
-use crate::pages::workspace::ChildRequestType;
+use crate::pages::workspace::workspace::ChildRequestType;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct TitleBarProps {
