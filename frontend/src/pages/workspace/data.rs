@@ -100,10 +100,6 @@ impl SharedUsers {
             self.list.borrow_mut().remove(position);
             *self.is_modified.borrow_mut() = true;
             *self.modified_reason.borrow_mut() = Some(SharedUsersModifiedReason::UserLeft);
-
-            let str = format!("user left! current users {0:?}", *self.list.borrow());
-
-            log::info!("{str}");
         }
     }
 
