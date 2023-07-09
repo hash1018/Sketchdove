@@ -11,6 +11,7 @@ pub enum ShouldAction {
     Rerender(DrawOption),
     BackToSelect,
     AddFigure(Box<dyn Figure>),
+    MousePositionChanged(f64, f64),
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]

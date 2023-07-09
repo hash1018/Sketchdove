@@ -10,25 +10,32 @@ use yew::{html, Callback, Component, Context, Properties};
 
 use crate::{
     algorithm::{
-        coordinates_converter::convert_figure_to_webgl,
+        coordinates_converter::{convert_device_to_figure, convert_figure_to_webgl},
         draw_mode::{pan_mode::PanMode, select_mode::SelectMode, DrawMode},
         visitor::drawer::{Drawer, DrawerGL},
     },
     base::{DrawModeType, DrawOption, ShouldAction},
 };
 
-use self::data::{DrawAreaData, WebGLData};
+use self::{
+    data::{DrawAreaData, WebGLData},
+    mouse_tracker::MouseTracker,
+};
 
 use super::{data::FigureList, workspace::ChildRequestType, UpdateReason};
 
 pub mod data;
+pub mod mouse_tracker;
 
 pub enum DrawAreaMessage {
     MouseDown(MouseEvent),
-    MouseMove(MouseEvent),
+    MouseMove(MouseEvent), //This message occurs when mousemove event is triggered.
     MouseUp(MouseEvent),
     KeyDown(KeyboardEvent),
     Wheel(WheelEvent),
+    //When the mouse position is checked at intervals by a timer,
+    //this message occurs if the position has changed
+    MousePositionChanged(f64, f64),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -46,6 +53,7 @@ pub struct DrawArea {
     webgl_data: Option<WebGLData>,
     keydown_closure: Option<Closure<dyn FnMut(KeyboardEvent)>>,
     draw_option: DrawOption,
+    mouse_tracker: MouseTracker,
 }
 
 impl Component for DrawArea {
@@ -58,6 +66,9 @@ impl Component for DrawArea {
 
         let keydown_closure = add_keydown_event(ctx);
 
+        let mut mouse_tracker = MouseTracker::new();
+        mouse_tracker.run();
+
         DrawArea {
             data,
             current_mode: Box::new(current_mode),
@@ -65,11 +76,13 @@ impl Component for DrawArea {
             webgl_data: None,
             keydown_closure,
             draw_option: DrawOption::DrawAll,
+            mouse_tracker,
         }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         remove_keydown_event(self.keydown_closure.take());
+        self.mouse_tracker.stop();
     }
 
     fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
@@ -122,6 +135,13 @@ impl Component for DrawArea {
                 }
             }
             DrawAreaMessage::MouseMove(event) => {
+                let (x, y) = convert_device_to_figure(
+                    self.data.coordinates(),
+                    event.offset_x() as f64,
+                    event.offset_y() as f64,
+                );
+                self.mouse_tracker.set_current_pos(x, y);
+
                 if let Some(mut pan_mode) = self.pan_mode.take() {
                     let should_action = pan_mode.mouse_mouse_event(event, &mut self.data);
                     self.pan_mode = Some(pan_mode);
@@ -163,6 +183,9 @@ impl Component for DrawArea {
                     Some(ShouldAction::Rerender(DrawOption::DrawAll))
                 }
             }
+            DrawAreaMessage::MousePositionChanged(x, y) => {
+                Some(ShouldAction::MousePositionChanged(x, y))
+            }
         };
 
         if let Some(should_action) = should_action {
@@ -181,6 +204,7 @@ impl Component for DrawArea {
                         .handler
                         .emit(ChildRequestType::AddFigure(figure));
                 }
+                ShouldAction::MousePositionChanged(_x, _y) => {}
             }
         }
         false
