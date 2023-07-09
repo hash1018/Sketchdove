@@ -19,7 +19,7 @@ use crate::{
 
 use self::data::{DrawAreaData, WebGLData};
 
-use super::{data::FigureList, workspace::ChildRequestType};
+use super::{data::FigureList, workspace::ChildRequestType, UpdateReason};
 
 pub mod data;
 
@@ -36,6 +36,7 @@ pub struct DrawAreaProps {
     pub handler: Callback<ChildRequestType>,
     pub current_mode: DrawModeType,
     pub figures: Rc<FigureList>,
+    pub update_reason: Option<UpdateReason>,
 }
 
 pub struct DrawArea {
@@ -71,29 +72,30 @@ impl Component for DrawArea {
         remove_keydown_event(self.keydown_closure.take());
     }
 
-    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        let new_mode = ctx.props().current_mode;
-        let old_mode = old_props.current_mode;
+    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
+        let update_reason = &ctx.props().update_reason;
 
-        let mut should_render = false;
-        if new_mode != old_mode {
-            self.current_mode = new_mode.into();
-            //NOTE: Just in case where current Mode changes when drawing is in progress.
-            if self.data.take_preview().is_some() {
-                self.draw_option = DrawOption::DrawAll;
-            } else {
-                self.draw_option = DrawOption::Remain;
+        if let Some(update_reason) = update_reason {
+            match update_reason {
+                UpdateReason::ChangeMode => {
+                    self.current_mode = ctx.props().current_mode.into();
+
+                    if self.data.take_preview().is_some() {
+                        self.draw_option = DrawOption::DrawAll;
+                    } else {
+                        self.draw_option = DrawOption::Remain;
+                    }
+                    return true;
+                }
+                UpdateReason::FigureAdded | UpdateReason::GetCurrentFigures => {
+                    self.draw_option = DrawOption::DrawAll;
+                    return true;
+                }
+                _ => return false,
             }
-            should_render = true;
         }
 
-        if ctx.props().figures.is_modified() {
-            ctx.props().figures.reset_modified();
-            self.draw_option = DrawOption::DrawAll;
-            should_render = true;
-        }
-
-        should_render
+        false
     }
 
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {

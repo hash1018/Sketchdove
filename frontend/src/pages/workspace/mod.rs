@@ -5,3 +5,15 @@ pub mod title_bar;
 pub mod tool_box;
 #[allow(clippy::module_inception)]
 pub mod workspace;
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum UpdateReason {
+    Init,
+    FigureAdded,
+    GetCurrentFigures,
+    GetCurrentSharedUsers,
+    UserJoined,
+    UserLeft,
+    ShowChat,
+    ChangeMode,
+}
