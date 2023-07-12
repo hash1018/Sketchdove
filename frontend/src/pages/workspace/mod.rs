@@ -16,4 +16,5 @@ pub enum UpdateReason {
     UserLeft,
     ShowChat,
     ChangeMode,
+    MousePositionChanged,
 }

@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use lib::figure::{leaf::line::Line, Color, Figure};
+use lib::{
+    common::Color,
+    figure::{leaf::line::Line, Figure},
+};
 use wasm_bindgen::{prelude::Closure, JsCast};
 use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, KeyboardEvent, MouseEvent, WebGlProgram,
@@ -22,7 +25,11 @@ use self::{
     mouse_tracker::MouseTracker,
 };
 
-use super::{data::FigureList, workspace::ChildRequestType, UpdateReason};
+use super::{
+    data::{FigureList, SharedUsers},
+    workspace::ChildRequestType,
+    UpdateReason,
+};
 
 pub mod data;
 pub mod mouse_tracker;
@@ -44,6 +51,7 @@ pub struct DrawAreaProps {
     pub current_mode: DrawModeType,
     pub figures: Rc<FigureList>,
     pub update_reason: Option<UpdateReason>,
+    pub shared_users: Rc<SharedUsers>,
 }
 
 pub struct DrawArea {
@@ -66,8 +74,10 @@ impl Component for DrawArea {
 
         let keydown_closure = add_keydown_event(ctx);
 
+        let link = ctx.link().clone();
+
         let mut mouse_tracker = MouseTracker::new();
-        mouse_tracker.run();
+        mouse_tracker.run(link);
 
         DrawArea {
             data,
@@ -101,6 +111,14 @@ impl Component for DrawArea {
                     return true;
                 }
                 UpdateReason::FigureAdded | UpdateReason::GetCurrentFigures => {
+                    self.draw_option = DrawOption::DrawAll;
+                    return true;
+                }
+                UpdateReason::MousePositionChanged => {
+                    self.draw_option = DrawOption::DrawAll;
+                    return true;
+                }
+                UpdateReason::UserLeft => {
                     self.draw_option = DrawOption::DrawAll;
                     return true;
                 }
@@ -184,7 +202,7 @@ impl Component for DrawArea {
                 }
             }
             DrawAreaMessage::MousePositionChanged(x, y) => {
-                Some(ShouldAction::MousePositionChanged(x, y))
+                Some(ShouldAction::NotifyMousePositionChanged(x, y))
             }
         };
 
@@ -204,7 +222,11 @@ impl Component for DrawArea {
                         .handler
                         .emit(ChildRequestType::AddFigure(figure));
                 }
-                ShouldAction::MousePositionChanged(_x, _y) => {}
+                ShouldAction::NotifyMousePositionChanged(x, y) => {
+                    ctx.props()
+                        .handler
+                        .emit(ChildRequestType::NotifyMousePositionChanged(x, y));
+                }
             }
         }
         false
@@ -268,6 +290,16 @@ impl DrawArea {
             preview.accept(&drawer);
             self.data.set_preview(Some(preview));
         }
+
+        let shared_users = props.shared_users.list();
+
+        let shared_users_borrow = shared_users.borrow();
+
+        for user in shared_users_borrow.iter() {
+            if !user.is_it_me() {
+                user.draw_mouse_cursor(&context, self.data.coordinates());
+            }
+        }
     }
 
     #[allow(dead_code)]
@@ -283,7 +315,7 @@ impl DrawArea {
             self.webgl_data = Some(WebGLData::new(&gl).unwrap());
         }
 
-        let rgba = Color::new(1.0, 0.0, 0.0, 1.0);
+        let rgba = Color::new(255, 0, 0, 255);
 
         let (start_x, start_y) = convert_figure_to_webgl(
             self.data.coordinates(),
@@ -327,7 +359,13 @@ fn _draw_triangle(
     gl.buffer_data_with_array_buffer_view(GL::ARRAY_BUFFER, &verts, GL::STATIC_DRAW);
 
     let color = gl.get_uniform_location(shader_program, "color");
-    gl.uniform4f(color.as_ref(), rgba.r, rgba.g, rgba.b, rgba.a);
+    gl.uniform4f(
+        color.as_ref(),
+        rgba.r as f32 / 255.0,
+        rgba.g as f32 / 255.0,
+        rgba.b as f32 / 255.0,
+        rgba.a as f32 / 255.0,
+    );
 
     gl.draw_arrays(GL::TRIANGLES, 0, 3);
 }

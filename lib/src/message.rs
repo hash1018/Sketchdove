@@ -8,6 +8,7 @@ pub enum ServerMessage {
     FigureAdded(FigureData),
     ResponseInfo(ResponseType),
     UserLeft(UserId),
+    NotifyUserMousePositionChanged(UserId, f64, f64),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -16,6 +17,7 @@ pub enum ClientMessage {
     Join(RoomId, UserId),
     AddFigure(FigureData),
     RequestInfo(RequestType),
+    NotifyMousePositionChanged(f64, f64),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

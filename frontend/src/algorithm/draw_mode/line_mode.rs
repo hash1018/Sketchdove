@@ -1,4 +1,7 @@
-use lib::figure::{leaf::line::Line, Color, Figure};
+use lib::{
+    common::Color,
+    figure::{leaf::line::Line, Figure},
+};
 
 use crate::{base::DrawOption, pages::workspace::draw_area::data::DrawAreaData};
 
@@ -35,7 +38,7 @@ impl DrawMode for LineMode {
         } else {
             self.start_x = Some(x);
             self.start_y = Some(y);
-            let line = Line::new(x, y, x, y, Color::new(0.0, 0.0, 0.0, 1.0));
+            let line = Line::new(x, y, x, y, Color::new(0, 0, 0, 255));
             data.set_preview(Some(Box::new(line)));
         }
         None

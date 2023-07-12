@@ -17,6 +17,7 @@ pub enum RoomMessage {
     LeaveUser(Arc<str>),
     AddFigure(FigureData),
     RequestInfo(Arc<str>, RequestType),
+    NotifyMousePositionChanged(Arc<str>, f64, f64),
 }
 
 pub struct Room {
@@ -102,6 +103,19 @@ impl Room {
                         }
                         _ => {}
                     },
+                    RoomMessage::NotifyMousePositionChanged(user_id, x, y) => {
+                        let mut users_lock = users_clone.lock().await;
+                        broadcast_except_for(
+                            &mut users_lock,
+                            &user_id,
+                            ServerMessage::NotifyUserMousePositionChanged(
+                                user_id.to_string(),
+                                x,
+                                y,
+                            ),
+                        )
+                        .await;
+                    }
                 }
             }
         });
@@ -132,5 +146,17 @@ async fn broadcast(
 ) {
     for (_, user) in users_lock.iter_mut() {
         user.send_message(message.clone()).await;
+    }
+}
+
+async fn broadcast_except_for(
+    users_lock: &mut MutexGuard<'_, HashMap<Arc<str>, User>>,
+    except_user_id: &Arc<str>,
+    message: ServerMessage,
+) {
+    for (id, user) in users_lock.iter_mut() {
+        if id != except_user_id {
+            user.send_message(message.clone()).await;
+        }
     }
 }

@@ -58,8 +58,13 @@ impl Visitor for DrawerGL<'_> {
 
         let color = self.gl.get_uniform_location(self.shader_program, "color");
         let rgba = line.color();
-        self.gl
-            .uniform4f(color.as_ref(), rgba.r, rgba.g, rgba.b, rgba.a);
+        self.gl.uniform4f(
+            color.as_ref(),
+            rgba.r as f32 / 255.0,
+            rgba.g as f32 / 255.0,
+            rgba.b as f32 / 255.0,
+            rgba.a as f32 / 255.0,
+        );
 
         self.gl.draw_arrays(WebGlRenderingContext::LINES, 0, 2);
     }

@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::figure::{Color, Figure, Visitor};
+use crate::{
+    common::Color,
+    figure::{Figure, Visitor},
+};
 
 use super::Leaf;
 

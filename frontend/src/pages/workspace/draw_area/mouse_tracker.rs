@@ -1,6 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
 use gloo_timers::callback::Interval;
+use yew::html::Scope;
+
+use super::{DrawArea, DrawAreaMessage};
 
 #[derive(Default)]
 pub struct MouseTracker {
@@ -27,28 +30,30 @@ impl MouseTracker {
         *self.current_y.borrow_mut() = Some(y);
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, link: Scope<DrawArea>) {
         let prev_x = self.prex_x.clone();
         let prev_y = self.prev_y.clone();
         let current_x = self.current_x.clone();
         let current_y = self.current_y.clone();
 
-        let interval = Interval::new(1000, move || {
+        let interval = Interval::new(200, move || {
             let mut prev_x = prev_x.borrow_mut();
             let mut prev_y = prev_y.borrow_mut();
             let current_x = current_x.borrow();
             let current_y = current_y.borrow();
 
             match (*prev_x, *prev_x, *current_x, *current_y) {
-                (Some(_), Some(_), Some(_), Some(_)) => {
+                (Some(_), Some(_), Some(x), Some(y)) => {
                     if *prev_x != *current_x && *prev_y != *current_y {
                         *prev_x = *current_x;
                         *prev_y = *current_y;
+                        link.send_message(DrawAreaMessage::MousePositionChanged(x, y));
                     }
                 }
-                (None, None, Some(_), Some(_)) => {
+                (None, None, Some(x), Some(y)) => {
                     *prev_x = *current_x;
                     *prev_y = *current_y;
+                    link.send_message(DrawAreaMessage::MousePositionChanged(x, y));
                 }
                 _ => {}
             }

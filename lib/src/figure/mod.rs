@@ -8,20 +8,6 @@ use self::leaf::line::{Line, LineData};
 pub mod composite;
 pub mod leaf;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-pub struct Color {
-    pub r: f32,
-    pub g: f32,
-    pub b: f32,
-    pub a: f32,
-}
-
-impl Color {
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
-        Color { r, g, b, a }
-    }
-}
-
 pub trait Visitor {
     fn visit_line(&self, figure: &mut Line);
 }

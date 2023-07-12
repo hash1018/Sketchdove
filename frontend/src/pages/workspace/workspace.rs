@@ -32,6 +32,7 @@ pub enum ChildRequestType {
     ShowChat(bool),
     ChangeMode(DrawModeType),
     AddFigure(Box<dyn Figure>),
+    NotifyMousePositionChanged(f64, f64),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -110,12 +111,13 @@ impl Workspace {
         let handler_clone2 = handler.clone();
         let figures = self.figures.clone();
         let update_reason = self.update_reason.clone();
+        let shared_users = self.shared_users.clone();
 
         html! {
             <body>
                 <div class="top"> <TitleBar {handler} {show_chat} /> </div>
                 <div class="content">
-                    <DrawArea handler = {handler_clone} {current_mode} {figures} {update_reason} />
+                    <DrawArea handler = {handler_clone} {current_mode} {figures} {update_reason} {shared_users} />
                     <div class="left"> <ToolBox handler = {handler_clone2} {current_mode} /> </div>
                     if show_chat {
                         <div class="chat_position"> <Chat /> </div>
@@ -245,6 +247,12 @@ fn handle_server_message(
             workspace.shared_users.remove(user_id);
             Some(UpdateReason::UserLeft)
         }
+        ServerMessage::NotifyUserMousePositionChanged(user_id, x, y) => {
+            workspace
+                .shared_users
+                .update_mouse_position(user_id, (x, y));
+            Some(UpdateReason::MousePositionChanged)
+        }
     };
 
     update_reason
@@ -277,6 +285,14 @@ fn handle_child_request(
             let data = figure.data();
             if let Some(wss) = workspace.wss.as_ref() {
                 wss.send(lib::message::ClientMessage::AddFigure(data));
+            }
+            None
+        }
+        ChildRequestType::NotifyMousePositionChanged(x, y) => {
+            if let Some(wss) = workspace.wss.as_ref() {
+                wss.send(lib::message::ClientMessage::NotifyMousePositionChanged(
+                    x, y,
+                ));
             }
             None
         }
